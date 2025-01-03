@@ -29,10 +29,6 @@ from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, au
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.cache import cache
-
-
-
-
 def hello(request):
     # return HttpResponse("Hello django. I am comming.")
     return JsonResponse({'hello': 'world'})
@@ -76,6 +72,14 @@ def get_rnas(request):
         body = json.loads(request.body.decode('utf-8'))
         drug_sequence = body.get('drug_sequence')
         print(drug_sequence)
+        cache_key = f"drug_sequence_{drug_sequence}"  # 使用 drug_sequence 作为缓存的 key
+        cached_result = cache.get(cache_key)
+
+        if cached_result:
+            # 如果缓存中有结果，则直接返回缓存的结果
+            print("Returning cached result")
+            return JsonResponse({'code': 0, 'msg': '查询成功，内容如下', "data": cached_result})
+
         raw_data = drug_sequence
         # 一些processdata的函数代码
 
@@ -375,11 +379,12 @@ def get_rnas(request):
                         "Probability": row.get("Probability")
                     })
 
+
+            cache.set(cache_key, data_list, timeout=3600)  # 缓存保存1小时
             # 返回 JSON 响应
             return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": data_list})
 
-    else:
-         return JsonResponse({'code': 100103, 'msg': '请求方法错误'})
+
 
 
 
