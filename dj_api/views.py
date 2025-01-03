@@ -29,6 +29,94 @@ from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, au
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.cache import cache
+
+
+def atom_features(atom):
+    return np.array(one_of_k_encoding_unk(atom.GetSymbol(),
+                                          ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca',
+                                           'Fe', 'As',
+                                           'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co',
+                                           'Se',
+                                           'Ti', 'Zn', 'H', 'Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn',
+                                           'Zr', 'Cr',
+                                           'Pt', 'Hg', 'Pb', 'Unknown']) +
+                    one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                    one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                    one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                    [atom.GetIsAromatic()])
+
+
+def one_of_k_encoding(x, allowable_set):
+    if x not in allowable_set:
+        raise Exception("input {0} not in allowable set{1}:".format(x, allowable_set))
+    return list(map(lambda s: x == s, allowable_set))
+
+
+def one_of_k_encoding_unk(x, allowable_set):
+    """Maps inputs not in the allowable set to the last element."""
+    if x not in allowable_set:
+        x = allowable_set[-1]
+    return list(map(lambda s: x == s, allowable_set))
+
+
+def process_smiles(smiles):
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol:
+            return Chem.MolToSmiles(mol, isomericSmiles=True)
+        else:
+            return None
+    except:
+        return None
+
+
+def smile_to_graph(smile):
+    mol = Chem.MolFromSmiles(smile)
+    c_size = mol.GetNumAtoms()
+
+    features = []
+    for atom in mol.GetAtoms():
+        feature = atom_features(atom)
+        features.append(feature / sum(feature))
+
+    edges = []
+    for bond in mol.GetBonds():
+        edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
+    g = nx.Graph(edges).to_directed()
+    edge_index = []
+    for e1, e2 in g.edges:
+        edge_index.append([e1, e2])
+
+    return c_size, features, edge_index
+
+
+def label_smiles(line, smi_ch_ind, MAX_SMI_LEN=100):
+    X = np.zeros(MAX_SMI_LEN)
+    for i, ch in enumerate(line[:MAX_SMI_LEN]):
+        # print(line[0][0])
+        # print(i,"========", ch)
+        X[i] = smi_ch_ind[ch]
+    return X
+
+    # 这里的seq_dict 在后面
+
+
+def seq_cat(prot, max_seq_len):
+    x = np.zeros(max_seq_len)
+    seq_voc = "ACGU"
+    seq_dict = {v: (i + 1) for i, v in enumerate(seq_voc)}
+    for i, ch in enumerate(prot[:max_seq_len]):
+        x[i] = seq_dict[ch]
+    return x
+
+CHARISOSMISET = {"#": 29, "%": 30, ")": 31, "(": 1, "+": 32, "-": 33, "/": 34, ".": 2,
+                         "1": 35, "0": 3, "3": 36, "2": 4, "5": 37, "4": 5, "7": 38, "6": 6,
+                         "9": 39, "8": 7, "=": 40, "A": 41, "@": 8, "C": 42, "B": 9, "E": 43,
+                         "D": 10, "G": 44, "F": 11, "I": 45, "H": 12, "K": 46, "M": 47, "L": 13,
+                         "O": 48, "N": 14, "P": 15, "S": 49, "R": 16, "U": 50, "T": 17, "W": 51,
+                         "V": 18, "Y": 52, "[": 53, "Z": 19, "]": 54, "\\": 20, "a": 55, "c": 56,
+                         "b": 21, "e": 57, "d": 22, "g": 58, "f": 23, "i": 59, "h": 24, "m": 60,
+                         "l": 25, "o": 61, "n": 26, "s": 62, "r": 27, "u": 63, "t": 28, "y": 64, ">": 65, "<": 66}
 def hello(request):
     # return HttpResponse("Hello django. I am comming.")
     return JsonResponse({'hello': 'world'})
@@ -87,83 +175,7 @@ def get_rnas(request):
         # -------------------------------------------------------------------------------------------------------------------------------------------------------------
         # 第一部分 对传入的数据进行处理
         # -------------------------------------------------------------------------------------------------------------------------------------------------------------
-        def atom_features(atom):
-            return np.array(one_of_k_encoding_unk(atom.GetSymbol(),
-                                                  ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca',
-                                                   'Fe', 'As',
-                                                   'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co',
-                                                   'Se',
-                                                   'Ti', 'Zn', 'H', 'Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn',
-                                                   'Zr', 'Cr',
-                                                   'Pt', 'Hg', 'Pb', 'Unknown']) +
-                            one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
-                            one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
-                            one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
-                            [atom.GetIsAromatic()])
 
-        def one_of_k_encoding(x, allowable_set):
-            if x not in allowable_set:
-                raise Exception("input {0} not in allowable set{1}:".format(x, allowable_set))
-            return list(map(lambda s: x == s, allowable_set))
-
-        def one_of_k_encoding_unk(x, allowable_set):
-            """Maps inputs not in the allowable set to the last element."""
-            if x not in allowable_set:
-                x = allowable_set[-1]
-            return list(map(lambda s: x == s, allowable_set))
-
-        def process_smiles(smiles):
-            try:
-                mol = Chem.MolFromSmiles(smiles)
-                if mol:
-                    return Chem.MolToSmiles(mol, isomericSmiles=True)
-                else:
-                    return None
-            except:
-                return None
-
-        def smile_to_graph(smile):
-            mol = Chem.MolFromSmiles(smile)
-            c_size = mol.GetNumAtoms()
-
-            features = []
-            for atom in mol.GetAtoms():
-                feature = atom_features(atom)
-                features.append(feature / sum(feature))
-
-            edges = []
-            for bond in mol.GetBonds():
-                edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
-            g = nx.Graph(edges).to_directed()
-            edge_index = []
-            for e1, e2 in g.edges:
-                edge_index.append([e1, e2])
-
-            return c_size, features, edge_index
-
-        def label_smiles(line, smi_ch_ind, MAX_SMI_LEN=100):
-            X = np.zeros(MAX_SMI_LEN)
-            for i, ch in enumerate(line[:MAX_SMI_LEN]):
-                # print(line[0][0])
-                # print(i,"========", ch)
-                X[i] = smi_ch_ind[ch]
-            return X
-
-        # 这里的seq_dict 在后面
-        def seq_cat(prot, max_seq_len):
-            x = np.zeros(max_seq_len)
-            for i, ch in enumerate(prot[:max_seq_len]):
-                x[i] = seq_dict[ch]
-            return x
-
-        CHARISOSMISET = {"#": 29, "%": 30, ")": 31, "(": 1, "+": 32, "-": 33, "/": 34, ".": 2,
-                         "1": 35, "0": 3, "3": 36, "2": 4, "5": 37, "4": 5, "7": 38, "6": 6,
-                         "9": 39, "8": 7, "=": 40, "A": 41, "@": 8, "C": 42, "B": 9, "E": 43,
-                         "D": 10, "G": 44, "F": 11, "I": 45, "H": 12, "K": 46, "M": 47, "L": 13,
-                         "O": 48, "N": 14, "P": 15, "S": 49, "R": 16, "U": 50, "T": 17, "W": 51,
-                         "V": 18, "Y": 52, "[": 53, "Z": 19, "]": 54, "\\": 20, "a": 55, "c": 56,
-                         "b": 21, "e": 57, "d": 22, "g": 58, "f": 23, "i": 59, "h": 24, "m": 60,
-                         "l": 25, "o": 61, "n": 26, "s": 62, "r": 27, "u": 63, "t": 28, "y": 64, ">": 65, "<": 66}
 
         CHARISOSMILEN = 66
 
@@ -172,7 +184,6 @@ def get_rnas(request):
 
         # 读取整个 Excel 文件
         import pandas as pd
-        print(os.getcwd())
         # 怎么识别不上
         drugs = pd.read_excel('dj_api/data/drug_id_smiles.xlsx')
         rna = pd.read_excel('dj_api/data/miRNA_sequences.xlsx')
