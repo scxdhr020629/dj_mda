@@ -1,0 +1,456 @@
+from django.shortcuts import render
+
+# Create your views here.
+from django.http import HttpResponse, JsonResponse
+import pandas as pd
+import numpy as np
+import os
+import json, pickle
+from collections import OrderedDict
+from rdkit import Chem
+from rdkit.Chem import MolFromSmiles
+import networkx as nx
+
+import csv
+import logging
+import sys
+
+
+import torch.nn as nn
+from jinja2.lexer import TOKEN_DOT
+from torch.utils.data import DataLoader, WeightedRandomSampler
+from .model.cnn_gcnmulti import GCNNetmuti
+# from  model.cnn_gcn import GCNNet
+from .utils.utils import *
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, auc
+
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.core.cache import cache
+def hello(request):
+    # return HttpResponse("Hello django. I am comming.")
+    return JsonResponse({'hello': 'world'})
+
+
+def get_user(request):
+    if request.method == 'GET':
+        usid = request.GET.get('usid', '')
+        if usid == '':
+            return JsonResponse({'code': 100101, 'msg': '用户id不能为空'})
+        if usid == '1':
+            return JsonResponse({'code': 100200, 'msg': '查询成功', 'data': {'usid': 1, 'name': 'james', 'age': 36}})
+        else:
+            return JsonResponse({'code': 100102, 'msg': '未查询到用户数据'})
+
+    else:
+        return JsonResponse({'code': 100103, 'msg': '请求方法错误'})
+
+
+def add_user(request):
+    if request.method == 'POST':
+        usid = request.POST.get('usid', '')
+        name = request.POST.get('name', '')
+        print(usid, name)
+        if usid == '' or name == '':
+            return JsonResponse({'code': 100101, 'msg': '用户id或密码不能为空'})
+        if usid == '1' and name == 'james':
+            return JsonResponse({'code': 100200, 'msg': '添加成功', 'data': {'usid': 1, 'name': 'james', 'age': 36}})
+        else:
+            return JsonResponse({'code': 100102, 'msg': '添加失败'})
+
+    else:
+        return JsonResponse({'code': 100103, 'msg': '请求方法错误'})
+
+# test mda
+def get_rnas(request):
+    if request.method == 'POST':
+        # 获取 POST 请求中的数据
+        # drug_name = request.POST.get('drug_name', '').strip()
+        # drug_name = request.POST.get('drug_name', '')
+
+        drug_sequence = request.POST.get('drug_sequence', '')
+        # 判断 drug_name 是否是 'Paclitaxel'
+        # if drug_name == 'Paclitaxel':
+        #     rnas = [
+        #         'miR-520a-3p',
+        #         'miR-184',
+        #         'miR-455-5p',
+        #         'miR-124-3p',
+        #         'miR-153-3p',
+        #     ]
+        #     return JsonResponse({'code': 100200, 'msg': '查询成功', 'data': {'rnas': rnas}})
+        # else:
+        #     return JsonResponse({'code': 100102, 'msg': '未找到对应的 RNA 数据'})
+        print("hello scx")
+        print(drug_sequence)
+        print("hello cx")
+        body = json.loads(request.body.decode('utf-8'))
+        drug_sequence = body.get('drug_sequence')
+        print(drug_sequence)
+        raw_data = drug_sequence
+        # 一些processdata的函数代码
+
+
+        # -------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # 第一部分 对传入的数据进行处理
+        # -------------------------------------------------------------------------------------------------------------------------------------------------------------
+        def atom_features(atom):
+            return np.array(one_of_k_encoding_unk(atom.GetSymbol(),
+                                                  ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca',
+                                                   'Fe', 'As',
+                                                   'Al', 'I', 'B', 'V', 'K', 'Tl', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co',
+                                                   'Se',
+                                                   'Ti', 'Zn', 'H', 'Li', 'Ge', 'Cu', 'Au', 'Ni', 'Cd', 'In', 'Mn',
+                                                   'Zr', 'Cr',
+                                                   'Pt', 'Hg', 'Pb', 'Unknown']) +
+                            one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                            one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                            one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) +
+                            [atom.GetIsAromatic()])
+
+        def one_of_k_encoding(x, allowable_set):
+            if x not in allowable_set:
+                raise Exception("input {0} not in allowable set{1}:".format(x, allowable_set))
+            return list(map(lambda s: x == s, allowable_set))
+
+        def one_of_k_encoding_unk(x, allowable_set):
+            """Maps inputs not in the allowable set to the last element."""
+            if x not in allowable_set:
+                x = allowable_set[-1]
+            return list(map(lambda s: x == s, allowable_set))
+
+        def process_smiles(smiles):
+            try:
+                mol = Chem.MolFromSmiles(smiles)
+                if mol:
+                    return Chem.MolToSmiles(mol, isomericSmiles=True)
+                else:
+                    return None
+            except:
+                return None
+
+        def smile_to_graph(smile):
+            mol = Chem.MolFromSmiles(smile)
+            c_size = mol.GetNumAtoms()
+
+            features = []
+            for atom in mol.GetAtoms():
+                feature = atom_features(atom)
+                features.append(feature / sum(feature))
+
+            edges = []
+            for bond in mol.GetBonds():
+                edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
+            g = nx.Graph(edges).to_directed()
+            edge_index = []
+            for e1, e2 in g.edges:
+                edge_index.append([e1, e2])
+
+            return c_size, features, edge_index
+
+        def label_smiles(line, smi_ch_ind, MAX_SMI_LEN=100):
+            X = np.zeros(MAX_SMI_LEN)
+            for i, ch in enumerate(line[:MAX_SMI_LEN]):
+                # print(line[0][0])
+                # print(i,"========", ch)
+                X[i] = smi_ch_ind[ch]
+            return X
+
+        # 这里的seq_dict 在后面
+        def seq_cat(prot, max_seq_len):
+            x = np.zeros(max_seq_len)
+            for i, ch in enumerate(prot[:max_seq_len]):
+                x[i] = seq_dict[ch]
+            return x
+
+        CHARISOSMISET = {"#": 29, "%": 30, ")": 31, "(": 1, "+": 32, "-": 33, "/": 34, ".": 2,
+                         "1": 35, "0": 3, "3": 36, "2": 4, "5": 37, "4": 5, "7": 38, "6": 6,
+                         "9": 39, "8": 7, "=": 40, "A": 41, "@": 8, "C": 42, "B": 9, "E": 43,
+                         "D": 10, "G": 44, "F": 11, "I": 45, "H": 12, "K": 46, "M": 47, "L": 13,
+                         "O": 48, "N": 14, "P": 15, "S": 49, "R": 16, "U": 50, "T": 17, "W": 51,
+                         "V": 18, "Y": 52, "[": 53, "Z": 19, "]": 54, "\\": 20, "a": 55, "c": 56,
+                         "b": 21, "e": 57, "d": 22, "g": 58, "f": 23, "i": 59, "h": 24, "m": 60,
+                         "l": 25, "o": 61, "n": 26, "s": 62, "r": 27, "u": 63, "t": 28, "y": 64, ">": 65, "<": 66}
+
+        CHARISOSMILEN = 66
+
+        # ----------------------------------------------------------------------------------------------------------------------------------------------------
+        # 下面这部分代码是 drug 和 mirna 的读取
+
+        # 读取整个 Excel 文件
+        import pandas as pd
+        print(os.getcwd())
+        # 怎么识别不上
+        drugs = pd.read_excel('dj_api/data/drug_id_smiles.xlsx')
+        rna = pd.read_excel('dj_api/data/miRNA_sequences.xlsx')
+
+        str_i = '1'
+
+        # 这里先处理一下 用process_smiles
+        my_process_smile = process_smiles(raw_data)
+
+        compound_iso_smiles = [my_process_smile] * len(rna)  # 创建一个和 Sequence 列一样长的列表
+
+        # 将 affinity 列全部设置为 0
+        affinity = [0] * len(rna)
+
+        # 创建 DataFrame，合并所有数据
+        final_df = pd.DataFrame({
+            'compound_iso_smiles': compound_iso_smiles,
+            'target_sequence': rna['Sequence'],
+            'affinity': affinity
+        })
+
+        # 保存为 CSV 文件
+        output_file = 'dj_api/data/processed/last/_mytest' + str_i + '.csv'
+        final_df.to_csv(output_file, index=False)
+
+        print(f"CSV 文件已保存至: {output_file}")
+        seq_voc = "ACGU"
+        seq_dict = {v: (i + 1) for i, v in enumerate(seq_voc)}
+        seq_dict_len = len(seq_dict)
+
+        # 药物图处理过程
+        opts = ['mytest']
+        for i in range(1, 2):
+            compound_iso_smiles = []
+            for opt in opts:
+                # df = pd.read_csv('data/processed/last/' + '_' + opt +str(i)+ '.csv')
+                df = pd.read_csv('dj_api/data/processed/last/' + '_' + opt + str_i + '.csv')
+                compound_iso_smiles += list(df['compound_iso_smiles'])
+            compound_iso_smiles = set(compound_iso_smiles)
+            smile_graph = {}
+            for smile in compound_iso_smiles:
+                g = smile_to_graph(smile)
+                smile_graph[smile] = g
+
+            # # convert to PyTorch data format
+            # df = pd.read_csv('data/processed/last/'+ '_mytest'+str(i)+'.csv')
+            df = pd.read_csv('dj_api/data/processed/last/' + '_mytest' + str_i + '.csv')
+            test_drugs, test_prots, test_Y = list(df['compound_iso_smiles']), list(df['target_sequence']), list(
+                df['affinity'])
+            XT = [seq_cat(t, 24) for t in test_prots]
+            test_sdrugs = [label_smiles(t, CHARISOSMISET, 100) for t in test_drugs]
+            test_drugs, test_prots, test_Y, test_seqdrugs = np.asarray(test_drugs), np.asarray(XT), np.asarray(
+                test_Y), np.asarray(test_sdrugs)
+            # test_data = TestbedDataset(root='data', dataset='last/'+'_mytest' + str(i), xd=test_drugs, xt=test_prots, y=test_Y,
+            #                            z=test_seqdrugs,
+            #                            smile_graph=smile_graph)
+            test_data = TestbedDataset(root='dj_api/data', dataset='last/' + '_mytest' + str_i, xd=test_drugs, xt=test_prots,
+                                       y=test_Y,
+                                       z=test_seqdrugs,
+                                       smile_graph=smile_graph)
+
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------
+        # 第二部分 进行预测
+        # ----------------------------------------------------------------------------------------------------------------------------------------------------
+
+        # 删去 rog auc
+
+        def predicting(model, device, loader):
+            model.eval()
+            total_probs = []
+            sample_indices = []
+            total_labels = []
+
+            logging.info('Making predictions for {} samples...'.format(len(loader.dataset)))
+            with torch.no_grad():
+                for batch_idx, data in enumerate(loader):
+                    data = data.to(device)
+                    output = model(data)
+                    probs = output.cpu().numpy()
+                    indices = np.arange(len(probs)) + batch_idx * loader.batch_size
+
+                    total_probs.extend(probs)
+                    sample_indices.extend(indices)
+                    total_labels.extend(data.y.view(-1, 1).cpu().numpy())
+
+            total_probs = np.array(total_probs).flatten()
+            sample_indices = np.array(sample_indices).flatten()
+            total_labels = np.array(total_labels).flatten()
+
+            return total_probs, sample_indices
+
+        # 先随便写的
+        # def save_top_30_predictions(probs, indices, file_name='top_30_predictions_01.csv'):
+        #     # Sort by probability (in descending order)
+        #     # sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+        #     sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+        #     sorted_probs = probs[sorted_indices]
+        #     # sorted_labels = labels[sorted_indices]
+        #     sorted_indices = indices[sorted_indices]
+        #
+        #     # Create a DataFrame to save the top 30 predictions
+        #     top_30_df = pd.DataFrame({
+        #         'Index': sorted_indices[:30],
+        #         'Probability': sorted_probs[:30],
+        #         # 'True_Label': sorted_labels[:30]
+        #     })
+        #
+        #     # Save to CSV
+        #     top_30_df.to_csv(file_name, index=False)
+        #     logging.info(f'Top 30 predictions saved to {file_name}')
+
+        def save_predictions(probs, indices, file_name='all_predict_02.csv'):
+            # Convert probabilities and indices to a DataFrame
+            predictions_df = pd.DataFrame({
+                'Index': indices,  # 保存样本索引
+                'Probability': probs  # 保存预测概率
+            })
+
+            # Save to CSV without sorting
+            predictions_df.to_csv(file_name, index=False)
+            logging.info(f'Predictions saved to {file_name}')
+
+        # 检测一下这段代码写的是否正确
+        def save_top_30_predictions(probs, indices, file_name='top_30_predictions_02.csv'):
+            # Sort by probability (in descending order)
+            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+            sorted_probs = probs[sorted_indices]
+            # sorted_labels = labels[sorted_indices]
+            sorted_indices = indices[sorted_indices]
+
+            # Create a DataFrame to save the top 30 predictions
+            top_30_df = pd.DataFrame({
+                'Index': sorted_indices[:30],
+                'Probability': sorted_probs[:30],
+                # 'True_Label': sorted_labels[:30]
+            })
+
+            # Save to CSV
+            top_30_df.to_csv(file_name, index=False)
+            logging.info(f'Top 30 predictions saved to {file_name}')
+
+        # 保存 rna信息
+        import pandas as pd
+
+        def map_top_30_to_rna(top_30_file, output_file='top_30_miRNA_predictions.csv'):
+            # 1. 读取miRNA_sequences文件
+            miRNA_df = rna  # 加载miRNA序列文件
+
+            # 2. 读取top 30预测文件
+            top_30_df = pd.read_csv(top_30_file)  # 加载top 30预测文件
+
+            # 3. 根据Index，将top 30的预测与miRNA_sequences的数据合并
+            merged_df = pd.merge(top_30_df, miRNA_df, left_on='Index', right_index=True, how='left')
+
+            # 4. 选择需要保存的列
+            result_df = merged_df[['RNA_ID', 'Sequence', 'Probability']]
+
+            # 5. 保存为CSV文件
+            result_df.to_csv(output_file, index=False)
+            print(f'Top 30 miRNA predictions saved to {output_file}')
+            # return result_df
+
+        # 示例：调用函数，假设文件路径正确
+
+        # miRNA_file = 'miRNA_sequences.xlsx'
+
+        modeling = GCNNetmuti
+
+        model_st = modeling.__name__
+
+        cuda_name = "cuda:0"
+        if len(sys.argv) > 3:
+            cuda_name = "cuda:" + str(int(sys.argv[1]))
+        print('cuda_name:', cuda_name)
+
+        TRAIN_BATCH_SIZE = 64
+        TEST_BATCH_SIZE = 64
+        LR = 0.0005
+        LOG_INTERVAL = 160
+        NUM_EPOCHS = 100
+
+        print('Learning rate: ', LR)
+        print('Epochs: ', NUM_EPOCHS)
+
+        # Main program: iterate over different datasets
+
+        print('\nrunning on ', model_st + '_')
+
+        log_filename = f'training_1.log'
+
+        logging.basicConfig(filename=log_filename, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s',
+                            level=logging.INFO)
+
+        # processed_data_file_test = 'data/processed/last/' + '_mytest1'+'.pt'
+        processed_data_file_test = 'dj_api/data/processed/last/' + '_mytest' + str_i + '.pt'
+        if ((not os.path.isfile(processed_data_file_test))):
+            print('please run process_data_old.py to prepare data in pytorch format!')
+        else:
+            # train_data = TestbedDataset(root='data', dataset='_train1')
+            # test_data = TestbedDataset(root='data', dataset='_test1')
+
+            # test_data = TestbedDataset(root='data', dataset='last/_mytest1')
+            # test_data = TestbedDataset(root='dj_api/data', dataset='last/_mytest' + str_i)
+            test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
+
+            # training the model
+            device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            model = modeling().to(device)
+            model_path = "dj_api/model_GCNNetmuti_.model"
+            model.load_state_dict(torch.load(model_path))
+
+            loss_fn = nn.BCELoss()  # for classification
+            # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+            # best_acc= 0
+            # best_epoch = -1
+
+            result_file_name = 'result_' + model_st + '_' + '.csv'
+
+            probs, indices = predicting(model, device, test_loader)
+
+            save_predictions(probs, indices, 'all_predict_0' + str_i + '.csv')
+            save_top_30_predictions(probs, indices, 'top_30_predictions_0' + str_i + '.csv')
+
+            # 现在是把前面的数据都给获取到了 但是我们要把数据和mirna对应上
+            top_30_file = 'top_30_predictions_0' + str_i + '.csv'
+            map_top_30_to_rna(top_30_file, 'top_30_miRNA_predictions_0' + str_i + '.csv')
+
+
+            csv_file_path = 'top_30_miRNA_predictions_0' + str_i + '.csv'
+            data_list = []
+
+            # 读取 CSV 文件
+            with open(csv_file_path, mode="r", encoding="utf-8") as file:
+                reader = csv.DictReader(file)
+                for index, row in enumerate(reader):
+                    if index >= 5:  # 只获取前五条数据
+                        break
+                    data_list.append({
+                        "RNA_ID": row.get("RNA_ID"),
+                        "Sequence": row.get("Sequence"),
+                        "Probability": row.get("Probability")
+                    })
+
+            # 返回 JSON 响应
+            return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": data_list})
+
+    else:
+         return JsonResponse({'code': 100103, 'msg': '请求方法错误'})
+
+
+
+def test_redis_cache(request):
+    # 获取缓存中的数据
+    cached_data = cache.get('test_key')
+
+    if cached_data is None:
+        # 如果缓存中没有数据，设置缓存并返回响应
+        cache.set('test_key', 'This is a test value', timeout=60)
+        response = {
+            'status': 'success',
+            'message': 'No data found in cache. Data has been cached.',
+            'cached_data': 'This is a test value'
+        }
+    else:
+        # 如果缓存中有数据，直接返回缓存的数据
+        response = {
+            'status': 'success',
+            'message': 'Data fetched from cache.',
+            'cached_data': cached_data
+        }
+
+    return JsonResponse(response)
