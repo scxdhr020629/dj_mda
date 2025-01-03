@@ -29,6 +29,10 @@ from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, au
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.cache import cache
+
+
+
+
 def hello(request):
     # return HttpResponse("Hello django. I am comming.")
     return JsonResponse({'hello': 'world'})
@@ -66,26 +70,9 @@ def add_user(request):
 # test mda
 def get_rnas(request):
     if request.method == 'POST':
-        # 获取 POST 请求中的数据
-        # drug_name = request.POST.get('drug_name', '').strip()
-        # drug_name = request.POST.get('drug_name', '')
 
-        drug_sequence = request.POST.get('drug_sequence', '')
-        # 判断 drug_name 是否是 'Paclitaxel'
-        # if drug_name == 'Paclitaxel':
-        #     rnas = [
-        #         'miR-520a-3p',
-        #         'miR-184',
-        #         'miR-455-5p',
-        #         'miR-124-3p',
-        #         'miR-153-3p',
-        #     ]
-        #     return JsonResponse({'code': 100200, 'msg': '查询成功', 'data': {'rnas': rnas}})
-        # else:
-        #     return JsonResponse({'code': 100102, 'msg': '未找到对应的 RNA 数据'})
-        print("hello scx")
-        print(drug_sequence)
-        print("hello cx")
+
+
         body = json.loads(request.body.decode('utf-8'))
         drug_sequence = body.get('drug_sequence')
         print(drug_sequence)
@@ -217,7 +204,6 @@ def get_rnas(request):
         for i in range(1, 2):
             compound_iso_smiles = []
             for opt in opts:
-                # df = pd.read_csv('data/processed/last/' + '_' + opt +str(i)+ '.csv')
                 df = pd.read_csv('dj_api/data/processed/last/' + '_' + opt + str_i + '.csv')
                 compound_iso_smiles += list(df['compound_iso_smiles'])
             compound_iso_smiles = set(compound_iso_smiles)
@@ -227,7 +213,6 @@ def get_rnas(request):
                 smile_graph[smile] = g
 
             # # convert to PyTorch data format
-            # df = pd.read_csv('data/processed/last/'+ '_mytest'+str(i)+'.csv')
             df = pd.read_csv('dj_api/data/processed/last/' + '_mytest' + str_i + '.csv')
             test_drugs, test_prots, test_Y = list(df['compound_iso_smiles']), list(df['target_sequence']), list(
                 df['affinity'])
@@ -235,9 +220,6 @@ def get_rnas(request):
             test_sdrugs = [label_smiles(t, CHARISOSMISET, 100) for t in test_drugs]
             test_drugs, test_prots, test_Y, test_seqdrugs = np.asarray(test_drugs), np.asarray(XT), np.asarray(
                 test_Y), np.asarray(test_sdrugs)
-            # test_data = TestbedDataset(root='data', dataset='last/'+'_mytest' + str(i), xd=test_drugs, xt=test_prots, y=test_Y,
-            #                            z=test_seqdrugs,
-            #                            smile_graph=smile_graph)
             test_data = TestbedDataset(root='dj_api/data', dataset='last/' + '_mytest' + str_i, xd=test_drugs, xt=test_prots,
                                        y=test_Y,
                                        z=test_seqdrugs,
@@ -273,25 +255,6 @@ def get_rnas(request):
 
             return total_probs, sample_indices
 
-        # 先随便写的
-        # def save_top_30_predictions(probs, indices, file_name='top_30_predictions_01.csv'):
-        #     # Sort by probability (in descending order)
-        #     # sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-        #     sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-        #     sorted_probs = probs[sorted_indices]
-        #     # sorted_labels = labels[sorted_indices]
-        #     sorted_indices = indices[sorted_indices]
-        #
-        #     # Create a DataFrame to save the top 30 predictions
-        #     top_30_df = pd.DataFrame({
-        #         'Index': sorted_indices[:30],
-        #         'Probability': sorted_probs[:30],
-        #         # 'True_Label': sorted_labels[:30]
-        #     })
-        #
-        #     # Save to CSV
-        #     top_30_df.to_csv(file_name, index=False)
-        #     logging.info(f'Top 30 predictions saved to {file_name}')
 
         def save_predictions(probs, indices, file_name='all_predict_02.csv'):
             # Convert probabilities and indices to a DataFrame
@@ -344,9 +307,6 @@ def get_rnas(request):
             print(f'Top 30 miRNA predictions saved to {output_file}')
             # return result_df
 
-        # 示例：调用函数，假设文件路径正确
-
-        # miRNA_file = 'miRNA_sequences.xlsx'
 
         modeling = GCNNetmuti
 
@@ -357,10 +317,10 @@ def get_rnas(request):
             cuda_name = "cuda:" + str(int(sys.argv[1]))
         print('cuda_name:', cuda_name)
 
-        TRAIN_BATCH_SIZE = 64
+        # TRAIN_BATCH_SIZE = 64
         TEST_BATCH_SIZE = 64
         LR = 0.0005
-        LOG_INTERVAL = 160
+        # LOG_INTERVAL = 160
         NUM_EPOCHS = 100
 
         print('Learning rate: ', LR)
@@ -375,16 +335,10 @@ def get_rnas(request):
         logging.basicConfig(filename=log_filename, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s',
                             level=logging.INFO)
 
-        # processed_data_file_test = 'data/processed/last/' + '_mytest1'+'.pt'
         processed_data_file_test = 'dj_api/data/processed/last/' + '_mytest' + str_i + '.pt'
         if ((not os.path.isfile(processed_data_file_test))):
             print('please run process_data_old.py to prepare data in pytorch format!')
         else:
-            # train_data = TestbedDataset(root='data', dataset='_train1')
-            # test_data = TestbedDataset(root='data', dataset='_test1')
-
-            # test_data = TestbedDataset(root='data', dataset='last/_mytest1')
-            # test_data = TestbedDataset(root='dj_api/data', dataset='last/_mytest' + str_i)
             test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
 
             # training the model
@@ -394,11 +348,7 @@ def get_rnas(request):
             model.load_state_dict(torch.load(model_path))
 
             loss_fn = nn.BCELoss()  # for classification
-            # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-            # best_acc= 0
-            # best_epoch = -1
 
-            result_file_name = 'result_' + model_st + '_' + '.csv'
 
             probs, indices = predicting(model, device, test_loader)
 
