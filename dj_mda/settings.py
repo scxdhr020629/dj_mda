@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "dj_api",
-    "dj_email",
     # 解决跨域问题
     "corsheaders",
 ]
