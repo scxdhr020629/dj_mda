@@ -24,7 +24,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # path("hello", views.hello),
     path("dj_api/", include("dj_api.urls")),
-    path("dj_email/", include("dj_email.urls")),
+    path("dj_api/email/", include("dj_email.urls")),
 
 ]
 
