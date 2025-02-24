@@ -149,3 +149,14 @@ CACHES = {
         }
     }
 }
+
+
+# 邮箱配置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.qq.com'  # 发送邮件的邮箱 的 SMTP服务器，这里用了163邮箱
+EMAIL_PORT = 25 # 发件箱的SMTP服务器端口
+EMAIL_HOST_USER = '2493595296@qq.com'  # 发送邮件的邮箱地址
+EMAIL_HOST_PASSWORD = 'blnvtgtzrhtlebah'  # 发送邮件的邮箱密码(这里使用的是授权码)
+# EMAIL_HOST_PASSWORD = 'cx020629'  # 发送邮件的邮箱密码(这里使用的是授权码)
+EMAIL_USE_TLS = True
+
