@@ -14,7 +14,7 @@ import networkx as nx
 import csv
 import logging
 import sys
-
+from io import BytesIO
 
 import torch.nn as nn
 from jinja2.lexer import TOKEN_DOT
@@ -154,8 +154,6 @@ def add_user(request):
 # test mda
 def get_rnas(request):
     if request.method == 'POST':
-
-
 
         body = json.loads(request.body.decode('utf-8'))
         drug_sequence = body.get('drug_sequence')
@@ -394,6 +392,204 @@ def get_rnas(request):
             cache.set(cache_key, data_list, timeout=3600)  # 缓存保存1小时
             # 返回 JSON 响应
             return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": data_list})
+
+
+def get_all_rnas(request):
+    if request.method == "POST":
+        body = json.loads(request.body)
+        dataList = body.get("data")
+        all_results = []
+
+        for i in range(len(dataList)):
+            drug_sequence = dataList[i]["sequence"]
+            print(drug_sequence)
+            cache_key = f"drug_sequence_{drug_sequence}"  # 使用 drug_sequence 作为缓存的 key
+            cached_result = cache.get(cache_key)
+
+            if cached_result:
+                print("Returning cached result")
+                all_results.extend([(drug_sequence, rna["RNA_ID"]) for rna in cached_result])
+                continue
+
+            raw_data = drug_sequence
+
+            CHARISOSMILEN = 66
+
+            # 读取整个 Excel 文件
+            drugs = pd.read_excel('dj_api/data/drug_id_smiles.xlsx')
+            rna = pd.read_excel('dj_api/data/miRNA_sequences.xlsx')
+
+            str_i = '1'
+
+            # 处理 drug_sequence
+            my_process_smile = process_smiles(raw_data)
+
+            compound_iso_smiles = [my_process_smile] * len(rna)
+            affinity = [0] * len(rna)
+
+            final_df = pd.DataFrame({
+                'compound_iso_smiles': compound_iso_smiles,
+                'target_sequence': rna['Sequence'],
+                'affinity': affinity
+            })
+
+            output_file = f'dj_api/data/processed/last/_mytest{str_i}.csv'
+            final_df.to_csv(output_file, index=False)
+
+            seq_voc = "ACGU"
+            seq_dict = {v: (i + 1) for i, v in enumerate(seq_voc)}
+            seq_dict_len = len(seq_dict)
+
+            opts = ['mytest']
+            for j in range(1, 2):
+                compound_iso_smiles = []
+                for opt in opts:
+                    df = pd.read_csv(f'dj_api/data/processed/last/_{opt}{str_i}.csv')
+                    compound_iso_smiles += list(df['compound_iso_smiles'])
+                compound_iso_smiles = set(compound_iso_smiles)
+                smile_graph = {}
+                for smile in compound_iso_smiles:
+                    g = smile_to_graph(smile)
+                    smile_graph[smile] = g
+
+                df = pd.read_csv(f'dj_api/data/processed/last/_mytest{str_i}.csv')
+                test_drugs, test_prots, test_Y = list(df['compound_iso_smiles']), list(df['target_sequence']), list(
+                    df['affinity'])
+                XT = [seq_cat(t, 24) for t in test_prots]
+                test_sdrugs = [label_smiles(t, CHARISOSMISET, 100) for t in test_drugs]
+                test_drugs, test_prots, test_Y, test_seqdrugs = np.asarray(test_drugs), np.asarray(XT), np.asarray(
+                    test_Y), np.asarray(test_sdrugs)
+                test_data = TestbedDataset(root='dj_api/data', dataset=f'last/_mytest{str_i}', xd=test_drugs,
+                                           xt=test_prots, y=test_Y, z=test_seqdrugs, smile_graph=smile_graph)
+
+            def predicting(model, device, loader):
+                model.eval()
+                total_probs = []
+                sample_indices = []
+
+                logging.info(f'Making predictions for {len(loader.dataset)} samples...')
+                with torch.no_grad():
+                    for batch_idx, data in enumerate(loader):
+                        data = data.to(device)
+                        output = model(data)
+                        probs = output.cpu().numpy()
+                        indices = np.arange(len(probs)) + batch_idx * loader.batch_size
+
+                        total_probs.extend(probs)
+                        sample_indices.extend(indices)
+
+                total_probs = np.array(total_probs).flatten()
+                sample_indices = np.array(sample_indices).flatten()
+
+                return total_probs, sample_indices
+
+            def save_predictions(probs, indices, file_name='all_predict_02.csv'):
+                predictions_df = pd.DataFrame({
+                    'Index': indices,
+                    'Probability': probs
+                })
+
+                predictions_df.to_csv(file_name, index=False)
+                logging.info(f'Predictions saved to {file_name}')
+
+            def save_top_30_predictions(probs, indices, file_name='top_30_predictions_02.csv'):
+                sorted_indices = np.argsort(probs)[::-1]
+                sorted_probs = probs[sorted_indices]
+                sorted_indices = indices[sorted_indices]
+
+                top_30_df = pd.DataFrame({
+                    'Index': sorted_indices[:30],
+                    'Probability': sorted_probs[:30]
+                })
+
+                top_30_df.to_csv(file_name, index=False)
+                logging.info(f'Top 30 predictions saved to {file_name}')
+
+
+            def map_top_30_to_rna(top_30_file, output_file='top_30_miRNA_predictions.csv'):
+                miRNA_df = rna
+
+                top_30_df = pd.read_csv(top_30_file)
+
+                merged_df = pd.merge(top_30_df, miRNA_df, left_on='Index', right_index=True, how='left')
+
+                result_df = merged_df[['RNA_ID', 'Sequence', 'Probability']]
+
+                result_df.to_csv(output_file, index=False)
+                print(f'Top 30 miRNA predictions saved to {output_file}')
+
+            modeling = GCNNetmuti
+
+            model_st = modeling.__name__
+
+            cuda_name = "cuda:0"
+            if len(sys.argv) > 3:
+                cuda_name = "cuda:" + str(int(sys.argv[1]))
+            print('cuda_name:', cuda_name)
+
+            TEST_BATCH_SIZE = 64
+            LR = 0.0005
+            NUM_EPOCHS = 100
+
+            print('Learning rate: ', LR)
+            print('Epochs: ', NUM_EPOCHS)
+
+            print('\nrunning on ', model_st + '_')
+
+            log_filename = 'training_1.log'
+
+            logging.basicConfig(filename=log_filename, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s',
+                                level=logging.INFO)
+
+            processed_data_file_test = f'dj_api/data/processed/last/_mytest{str_i}.pt'
+            if not os.path.isfile(processed_data_file_test):
+                print('please run process_data_old.py to prepare data in pytorch format!')
+            else:
+                test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
+
+                device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                model = modeling().to(device)
+                model_path = "dj_api/model_GCNNetmuti_.model"
+                model.load_state_dict(torch.load(model_path))
+
+                loss_fn = nn.BCELoss()
+
+                probs, indices = predicting(model, device, test_loader)
+
+                save_predictions(probs, indices, f'all_predict_0{str_i}.csv')
+                save_top_30_predictions(probs, indices, f'top_30_predictions_0{str_i}.csv')
+
+                top_30_file = f'top_30_predictions_0{str_i}.csv'
+                map_top_30_to_rna(top_30_file, f'top_30_miRNA_predictions_0{str_i}.csv')
+
+                csv_file_path = f'top_30_miRNA_predictions_0{str_i}.csv'
+                data_list = []
+
+                with open(csv_file_path, mode="r", encoding="utf-8") as file:
+                    reader = csv.DictReader(file)
+                    for index, row in enumerate(reader):
+                        if index >= 5:
+                            break
+                        data_list.append({
+                            "RNA_ID": row.get("RNA_ID"),
+                            "Sequence": row.get("Sequence"),
+                            "Probability": row.get("Probability")
+                        })
+
+                cache.set(cache_key, data_list, timeout=3600)
+                all_results.extend([(drug_sequence, rna["RNA_ID"]) for rna in data_list])
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df = pd.DataFrame(all_results, columns=["Drug Sequence", "RNA_ID"])
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+
+        output.seek(0)
+        response = HttpResponse(output,
+                                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="predicted_rnas.xlsx"'
+
+        return response
 
 
 

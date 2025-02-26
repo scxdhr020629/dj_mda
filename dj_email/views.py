@@ -46,8 +46,8 @@ def send_email(request):
 
             # 记录日志
             # logger.info(f"Email sent to {body.get('recipient_list')} with subject: {body.get('subject')}")
-
-            return JsonResponse({'code': 0, 'msg': '邮件发送成功'})
+            print("为什么前端没有json")
+            return JsonResponse({'code': 0, 'msg': '邮件发送成功', 'data': body})
         except Exception as e:
             # 捕获异常并记录错误日志
             # logger.error(f"Failed to send email: {str(e)}")

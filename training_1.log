@@ -1,3 +1,6 @@
-2025-01-03 17:27:15,556 - INFO - Making predictions for 1578 samples...
-2025-01-03 17:27:16,559 - INFO - Predictions saved to all_predict_01.csv
-2025-01-03 17:27:16,560 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-26 16:05:22,348 - INFO - Making predictions for 1578 samples...
+2025-02-26 16:05:24,394 - INFO - Predictions saved to all_predict_01.csv
+2025-02-26 16:05:24,397 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-26 16:05:26,832 - INFO - Making predictions for 1578 samples...
+2025-02-26 16:05:28,570 - INFO - Predictions saved to all_predict_01.csv
+2025-02-26 16:05:28,573 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
