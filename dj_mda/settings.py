@@ -160,3 +160,16 @@ EMAIL_HOST_PASSWORD = 'blnvtgtzrhtlebah'  # 发送邮件的邮箱密码(这里�
 # EMAIL_HOST_PASSWORD = 'cx020629'  # 发送邮件的邮箱密码(这里使用的是授权码)
 EMAIL_USE_TLS = True
 
+# 文件下载配置
+import os
+
+# 项目根目录路径
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 其他设置...
+
+# 媒体文件存储路径
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# 媒体文件的URL路径
+MEDIA_URL = '/media/'

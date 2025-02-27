@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render
 
 # Create your views here.
@@ -408,7 +409,7 @@ def get_all_rnas(request):
 
             if cached_result:
                 print("Returning cached result")
-                all_results.extend([(drug_sequence, rna["RNA_ID"]) for rna in cached_result])
+                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Probability"]) for rna in cached_result])
                 continue
 
             raw_data = drug_sequence
@@ -577,19 +578,26 @@ def get_all_rnas(request):
                         })
 
                 cache.set(cache_key, data_list, timeout=3600)
-                all_results.extend([(drug_sequence, rna["RNA_ID"]) for rna in data_list])
+                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Probability"]) for rna in data_list])
 
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df = pd.DataFrame(all_results, columns=["Drug Sequence", "RNA_ID"])
+            df = pd.DataFrame(all_results, columns=["Drug Sequence", "RNA_ID", "Probability"])
             df.to_excel(writer, index=False, sheet_name='Sheet1')
 
         output.seek(0)
-        response = HttpResponse(output,
-                                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename="predicted_rnas.xlsx"'
+        file_name = "predicted_rnas.xlsx"
+        file_path = os.path.join(settings.MEDIA_ROOT, file_name)
 
-        return response
+        with open(file_path, "wb") as file:
+            file.write(output.read())
+
+        download_link = request.build_absolute_uri(settings.MEDIA_URL + file_name)
+        # response_data = {
+        #     "download_link": download_link
+        # }
+        # {'code': 0, 'msg': '邮件发送成功', 'data': body}
+        return JsonResponse({'code': 0, 'msg': '邮件发送成功', 'data': download_link})
 
 
 

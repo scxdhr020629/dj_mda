@@ -1,6 +1,37 @@
-2025-02-26 16:05:22,348 - INFO - Making predictions for 1578 samples...
-2025-02-26 16:05:24,394 - INFO - Predictions saved to all_predict_01.csv
-2025-02-26 16:05:24,397 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-02-26 16:05:26,832 - INFO - Making predictions for 1578 samples...
-2025-02-26 16:05:28,570 - INFO - Predictions saved to all_predict_01.csv
-2025-02-26 16:05:28,573 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:00:43,647 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:00:44,351 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:00:44,351 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:00:44,793 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:00:45,075 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:00:45,076 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:00:46,320 - ERROR - Internal Server Error: /dj_api/get_all_rnas/
+Traceback (most recent call last):
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 592, in get_all_rnas
+    with open(file_path, "wb") as file:
+FileNotFoundError: [Errno 2] No such file or directory: 'D:\\MyGitProjects\\dj_mda\\media\\predicted_rnas.xlsx'
+2025-02-27 14:03:51,314 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:03:51,797 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:03:51,798 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:03:52,259 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:03:52,508 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:03:52,508 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:03:53,668 - ERROR - Internal Server Error: /dj_api/get_all_rnas/
+Traceback (most recent call last):
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 592, in get_all_rnas
+    with open(file_path, "wb") as file:
+FileNotFoundError: [Errno 2] No such file or directory: 'D:\\MyGitProjects\\dj_mda\\media\\predicted_rnas.xlsx'
+2025-02-27 14:04:32,998 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:04:33,340 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:04:33,341 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:04:33,988 - INFO - Making predictions for 1578 samples...
+2025-02-27 14:04:34,559 - INFO - Predictions saved to all_predict_01.csv
+2025-02-27 14:04:34,559 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-02-27 14:12:15,018 - INFO - D:\MyGitProjects\dj_mda\dj_api\views.py changed, reloading.

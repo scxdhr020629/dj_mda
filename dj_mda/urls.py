@@ -28,3 +28,11 @@ urlpatterns = [
 
 ]
 
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+
+# 添加以下代码以提供媒体文件的访问
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
