@@ -409,7 +409,7 @@ def get_all_rnas(request):
 
             if cached_result:
                 print("Returning cached result")
-                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Probability"]) for rna in cached_result])
+                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Sequence"],rna["Probability"]) for rna in cached_result])
                 continue
 
             raw_data = drug_sequence
@@ -578,11 +578,11 @@ def get_all_rnas(request):
                         })
 
                 cache.set(cache_key, data_list, timeout=3600)
-                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Probability"]) for rna in data_list])
+                all_results.extend([(drug_sequence, rna["RNA_ID"],rna["Sequence"],rna["Probability"]) for rna in data_list])
 
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df = pd.DataFrame(all_results, columns=["Drug Sequence", "RNA_ID", "Probability"])
+            df = pd.DataFrame(all_results, columns=["Drug Sequence", "RNA_ID", "Sequence","Probability"])
             df.to_excel(writer, index=False, sheet_name='Sheet1')
 
         output.seek(0)
@@ -593,10 +593,7 @@ def get_all_rnas(request):
             file.write(output.read())
 
         download_link = request.build_absolute_uri(settings.MEDIA_URL + file_name)
-        # response_data = {
-        #     "download_link": download_link
-        # }
-        # {'code': 0, 'msg': '邮件发送成功', 'data': body}
+
         return JsonResponse({'code': 0, 'msg': '邮件发送成功', 'data': download_link})
 
 
