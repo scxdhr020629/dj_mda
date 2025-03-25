@@ -1,27 +1,45 @@
-2025-02-28 12:23:20,620 - INFO - Making predictions for 1578 samples...
-2025-02-28 12:23:21,700 - INFO - Predictions saved to all_predict_01.csv
-2025-02-28 12:23:21,702 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-02-28 12:23:22,545 - INFO - Making predictions for 1578 samples...
-2025-02-28 12:23:22,928 - INFO - Predictions saved to all_predict_01.csv
-2025-02-28 12:23:22,929 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-02-28 12:30:41,740 - INFO - Making predictions for 1578 samples...
-2025-02-28 12:30:42,332 - INFO - Predictions saved to all_predict_01.csv
-2025-02-28 12:30:42,333 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-02-28 12:30:43,117 - INFO - Making predictions for 1578 samples...
-2025-02-28 12:30:43,391 - INFO - Predictions saved to all_predict_01.csv
-2025-02-28 12:30:43,392 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-02-28 12:34:00,540 - ERROR - Internal Server Error: /dj_api/get_all_rnas/
+2025-03-25 15:28:49,050 - INFO - Making predictions for 156 samples...
+2025-03-25 15:28:49,327 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:28:49,328 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:31:03,019 - INFO - Making predictions for 156 samples...
+2025-03-25 15:31:03,065 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:31:03,066 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:31:06,676 - ERROR - Internal Server Error: /dj_api/get_drugs/
 Traceback (most recent call last):
   File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
     response = get_response(request)
   File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
     response = wrapped_callback(request, *callback_args, **callback_kwargs)
-  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 463, in get_all_rnas
-    test_data = TestbedDataset(root='dj_api/data', dataset=f'last/_mytest{str_i}', xd=test_drugs,
-  File "D:\MyGitProjects\dj_mda\dj_api\utils\utils.py", line 26, in __init__
-    self.process(xd, xt, y, z, smile_graph)
-  File "D:\MyGitProjects\dj_mda\dj_api\utils\utils.py", line 97, in process
-    data, slices = self.collate(data_list)
-  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\torch_geometric\data\in_memory_dataset.py", line 156, in collate
-    data_list[0].__class__,
-IndexError: list index out of range
+  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 395, in get_drugs
+    map_top_30_to_drugs(top_30_file, 'top_30_drug_predictions_0' + str_i + '.csv')
+  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 335, in map_top_30_to_drugs
+    result_df.to_csv(output_file, index=False)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\pandas\util\_decorators.py", line 333, in wrapper
+    return func(*args, **kwargs)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\pandas\core\generic.py", line 3967, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\pandas\io\formats\format.py", line 1014, in to_csv
+    csv_formatter.save()
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\pandas\io\formats\csvs.py", line 251, in save
+    with get_handle(
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\pandas\io\common.py", line 873, in get_handle
+    handle = open(
+PermissionError: [Errno 13] Permission denied: 'top_30_drug_predictions_01.csv'
+2025-03-25 15:31:34,630 - INFO - Making predictions for 156 samples...
+2025-03-25 15:31:34,679 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:31:34,680 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:32:01,290 - INFO - Making predictions for 1578 samples...
+2025-03-25 15:32:01,706 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:32:01,707 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:32:17,129 - INFO - Making predictions for 1578 samples...
+2025-03-25 15:32:17,552 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:32:17,553 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:32:36,804 - INFO - Making predictions for 156 samples...
+2025-03-25 15:32:36,855 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:32:36,856 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:33:59,433 - INFO - Making predictions for 1578 samples...
+2025-03-25 15:33:59,930 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:33:59,931 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-25 15:34:14,830 - INFO - Making predictions for 156 samples...
+2025-03-25 15:34:14,873 - INFO - Predictions saved to all_predict_01.csv
+2025-03-25 15:34:14,874 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
