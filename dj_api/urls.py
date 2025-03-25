@@ -9,5 +9,6 @@ urlpatterns = [
     path('get_rnas/',views.get_rnas),
     path('get_all_rnas/',views.get_all_rnas),
     path('get_drugs/',views.get_drugs),
+    path('get_all_drugs/', views.get_all_drugs),
     path('test-redis/', views.test_redis_cache, name='test_redis_cache'),
 ]
