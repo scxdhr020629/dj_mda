@@ -1,12 +1,42 @@
-2025-03-25 16:26:42,894 - INFO - Making predictions for 156 samples...
-2025-03-25 16:26:43,817 - INFO - Predictions saved to all_predict_01.csv
-2025-03-25 16:26:43,822 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-03-25 16:26:45,072 - INFO - Making predictions for 156 samples...
-2025-03-25 16:26:45,202 - INFO - Predictions saved to all_predict_01.csv
-2025-03-25 16:26:45,217 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-03-25 16:27:09,200 - INFO - Making predictions for 156 samples...
-2025-03-25 16:27:09,347 - INFO - Predictions saved to all_predict_01.csv
-2025-03-25 16:27:09,349 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
-2025-03-25 16:27:38,495 - INFO - Making predictions for 156 samples...
-2025-03-25 16:27:38,645 - INFO - Predictions saved to all_predict_01.csv
-2025-03-25 16:27:38,648 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:17:44,704 - INFO - Making predictions for 1578 samples...
+2025-03-26 10:17:51,573 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:17:51,574 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:20:41,296 - INFO - Making predictions for 156 samples...
+2025-03-26 10:20:41,475 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:20:41,479 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:22:52,553 - INFO - Making predictions for 156 samples...
+2025-03-26 10:22:52,736 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:22:52,737 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:31:50,588 - ERROR - Internal Server Error: /dj_api/get_all_rnas/
+Traceback (most recent call last):
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 949, in get_all_rnas
+    test_data = TestbedDataset(root='dj_api/data', dataset=f'last/_mytest{str_i}', xd=test_drugs,
+  File "D:\MyGitProjects\dj_mda\dj_api\utils\utils.py", line 26, in __init__
+    self.process(xd, xt, y, z, smile_graph)
+  File "D:\MyGitProjects\dj_mda\dj_api\utils\utils.py", line 97, in process
+    data, slices = self.collate(data_list)
+  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\torch_geometric\data\in_memory_dataset.py", line 156, in collate
+    data_list[0].__class__,
+IndexError: list index out of range
+2025-03-26 10:33:15,714 - INFO - Making predictions for 1578 samples...
+2025-03-26 10:33:17,924 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:33:17,927 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:33:20,501 - INFO - Making predictions for 1578 samples...
+2025-03-26 10:33:22,677 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:33:22,681 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:50:51,421 - INFO - Making predictions for 1578 samples...
+2025-03-26 10:50:53,212 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:50:53,215 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:50:54,836 - INFO - Making predictions for 1578 samples...
+2025-03-26 10:50:57,484 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:50:57,487 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:51:25,812 - INFO - Making predictions for 156 samples...
+2025-03-26 10:51:25,982 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:51:25,983 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
+2025-03-26 10:51:27,191 - INFO - Making predictions for 156 samples...
+2025-03-26 10:51:27,303 - INFO - Predictions saved to all_predict_01.csv
+2025-03-26 10:51:27,304 - INFO - Top 30 predictions saved to top_30_predictions_01.csv
