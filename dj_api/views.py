@@ -157,6 +157,378 @@ def add_user(request):
 
 
 
+
+def get_drug_rna_relation(request):
+    if request.method == 'POST':
+
+        body = json.loads(request.body.decode('utf-8'))
+        drug_sequence = body.get('drug_sequence')
+        rna_sequence = body.get('rna_sequence')
+        print(rna_sequence)
+        cache_key = f"r_sequence_{drug_sequence}_{rna_sequence}"  # 使用 rna_sequence 作为缓存的 key
+        cached_result = cache.get(cache_key)
+        if cached_result:
+            # 如果缓存中有结果，则直接返回缓存的结果
+            print("Returning cached result")
+            return JsonResponse({'code': 0, 'msg': '查询成功，内容如下', "data": cached_result})
+
+        raw_data = rna_sequence
+        # 一些processdata的函数代码
+
+
+        # -------------------------------------------------------------------------------------------------------------------------------------------------------------
+        # 第一部分 对传入的数据进行处理
+        # -------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+        CHARISOSMILEN = 66
+
+        # ----------------------------------------------------------------------------------------------------------------------------------------------------
+        # 下面这部分代码是 drug 和 mirna 的读取
+
+        # 读取整个 Excel 文件
+        import pandas as pd
+        # 怎么识别不上
+
+
+        str_i = '1'
+
+        # 这里先处理一下 用process_smiles
+
+        my_process_smile = []
+
+        result = process_smiles(drug_sequence)
+        my_process_smile.append(result)
+        compound_iso_smiles = my_process_smile
+        rna_list = [raw_data] * 1  # 创建一个和 smiles 列一样长的列表
+
+        # 将 affinity 列全部设置为 0
+        affinity = [0] * 1
+
+        # 创建 DataFrame，合并所有数据
+        final_df = pd.DataFrame({
+            'compound_iso_smiles': compound_iso_smiles,
+            'target_sequence': rna_list,
+            'affinity': affinity
+        })
+
+        # 保存为 CSV 文件
+        output_file = 'dj_api/data/processed/last/_mytest' + str_i + '.csv'
+        final_df.to_csv(output_file, index=False)
+
+        print(f"CSV 文件已保存至: {output_file}")
+        seq_voc = "ACGU"
+        seq_dict = {v: (i + 1) for i, v in enumerate(seq_voc)}
+        seq_dict_len = len(seq_dict)
+
+        # 药物图处理过程
+        opts = ['mytest']
+        for i in range(1, 2):
+            compound_iso_smiles = []
+            for opt in opts:
+                df = pd.read_csv('dj_api/data/processed/last/' + '_' + opt + str_i + '.csv')
+                compound_iso_smiles += list(df['compound_iso_smiles'])
+            compound_iso_smiles = set(compound_iso_smiles)
+            smile_graph = {}
+            for smile in compound_iso_smiles:
+                g = smile_to_graph(smile)
+                smile_graph[smile] = g
+
+            # # convert to PyTorch data format
+            df = pd.read_csv('dj_api/data/processed/last/' + '_mytest' + str_i + '.csv')
+            test_drugs, test_prots, test_Y = list(df['compound_iso_smiles']), list(df['target_sequence']), list(
+                df['affinity'])
+            XT = [seq_cat(t, 24) for t in test_prots]
+            test_sdrugs = [label_smiles(t, CHARISOSMISET, 100) for t in test_drugs]
+            test_drugs, test_prots, test_Y, test_seqdrugs = np.asarray(test_drugs), np.asarray(XT), np.asarray(
+                test_Y), np.asarray(test_sdrugs)
+            test_data = TestbedDataset(root='dj_api/data', dataset='last/' + '_mytest' + str_i, xd=test_drugs, xt=test_prots,
+                                       y=test_Y,
+                                       z=test_seqdrugs,
+                                       smile_graph=smile_graph)
+
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------
+        # 第二部分 进行预测
+        # ----------------------------------------------------------------------------------------------------------------------------------------------------
+
+        # 删去 rog auc
+
+        def predicting(model, device, loader):
+            model.eval()
+            total_probs = []
+            sample_indices = []
+            total_labels = []
+
+            logging.info('Making predictions for {} samples...'.format(len(loader.dataset)))
+            with torch.no_grad():
+                for batch_idx, data in enumerate(loader):
+                    data = data.to(device)
+                    output = model(data)
+                    probs = output.cpu().numpy()
+                    indices = np.arange(len(probs)) + batch_idx * loader.batch_size
+
+                    total_probs.extend(probs)
+                    sample_indices.extend(indices)
+                    total_labels.extend(data.y.view(-1, 1).cpu().numpy())
+
+            total_probs = np.array(total_probs).flatten()
+            sample_indices = np.array(sample_indices).flatten()
+            total_labels = np.array(total_labels).flatten()
+
+            return total_probs, sample_indices
+
+
+        def save_predictions(probs, indices, file_name='all_predict_02.csv'):
+            # Convert probabilities and indices to a DataFrame
+            predictions_df = pd.DataFrame({
+                'Index': indices,  # 保存样本索引
+                'Probability': probs  # 保存预测概率
+            })
+
+            # Save to CSV without sorting
+            predictions_df.to_csv(file_name, index=False)
+            logging.info(f'Predictions saved to {file_name}')
+
+        # 检测一下这段代码写的是否正确
+        def save_top_30_predictions(probs, indices, file_name='top_30_predictions_02.csv'):
+            # Sort by probability (in descending order)
+            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+            sorted_probs = probs[sorted_indices]
+            # sorted_labels = labels[sorted_indices]
+            sorted_indices = indices[sorted_indices]
+
+            # Create a DataFrame to save the top 30 predictions
+            top_30_df = pd.DataFrame({
+                'Index': sorted_indices[:30],
+                'Probability': sorted_probs[:30],
+                # 'True_Label': sorted_labels[:30]
+            })
+
+            # Save to CSV
+            top_30_df.to_csv(file_name, index=False)
+            logging.info(f'Top 30 predictions saved to {file_name}')
+
+        # 保存 rna信息
+        import pandas as pd
+        modeling = GCNNetmuti
+
+        model_st = modeling.__name__
+
+        cuda_name = "cuda:0"
+        if len(sys.argv) > 3:
+            cuda_name = "cuda:" + str(int(sys.argv[1]))
+        print('cuda_name:', cuda_name)
+
+        # TRAIN_BATCH_SIZE = 64
+        TEST_BATCH_SIZE = 64
+        LR = 0.0005
+        # LOG_INTERVAL = 160
+        NUM_EPOCHS = 100
+
+        print('Learning rate: ', LR)
+        print('Epochs: ', NUM_EPOCHS)
+
+        # Main program: iterate over different datasets
+
+        print('\nrunning on ', model_st + '_')
+
+        log_filename = f'training_1.log'
+
+        logging.basicConfig(filename=log_filename, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s',
+                            level=logging.INFO)
+
+        processed_data_file_test = 'dj_api/data/processed/last/' + '_mytest' + str_i + '.pt'
+        if ((not os.path.isfile(processed_data_file_test))):
+            print('please run process_data_old.py to prepare data in pytorch format!')
+        else:
+            test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=False)
+
+            # training the model
+            device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            model = modeling().to(device)
+            model_path = "dj_api/model_GCNNetmuti_.model"
+            model.load_state_dict(torch.load(model_path))
+
+            loss_fn = nn.BCELoss()  # for classification
+
+
+            probs, indices = predicting(model, device, test_loader)
+            print(f'probs: {probs}')
+            result_data = {
+                "drug_sequence": drug_sequence,  # 这里用你的drug_sequence变量
+                "rna_sequence": rna_sequence,
+                "probability": float(probs[0] ) # 确保转换为Python原生float，便于JSON序列化
+            }
+            cache.set(cache_key, result_data, 60 * 60 * 24 * 7)  # 缓存7天
+            return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": result_data})
+
+
+
+def get_all_drug_rna_relation(request):
+    if request.method == "POST":
+        body = json.loads(request.body)
+        dataList = body.get("data")
+        all_results = []
+
+        for i in range(len(dataList)):
+            drug_sequence = dataList[i]["drug_sequence"]
+            rna_sequence = dataList[i]["rna_sequence"]
+
+            cache_key = f"r_sequence_{drug_sequence}_{rna_sequence}"  # 使用 rna_sequence 作为缓存的 key
+            cached_result = cache.get(cache_key)
+
+            if cached_result:
+                print("Returning cached result")
+                all_results.append(cached_result)
+                continue
+
+            raw_data = rna_sequence
+
+            CHARISOSMILEN = 66
+
+            # 读取整个 Excel 文件
+
+
+            str_i = '1'
+
+            # 处理 drug_sequence
+            my_process_smile = []
+
+            result = process_smiles(drug_sequence)
+            my_process_smile.append(result)
+            compound_iso_smiles = my_process_smile
+            rna_list = [raw_data] * 1  # 创建一个和 smiles 列一样长的列表
+            affinity = [0] * 1
+
+            final_df = pd.DataFrame({
+                'compound_iso_smiles': compound_iso_smiles,
+                'target_sequence': rna_list,
+                'affinity': affinity
+            })
+
+            output_file = f'dj_api/data/processed/last/_mytest{str_i}.csv'
+            final_df.to_csv(output_file, index=False)
+
+            seq_voc = "ACGU"
+            seq_dict = {v: (i + 1) for i, v in enumerate(seq_voc)}
+            seq_dict_len = len(seq_dict)
+
+            opts = ['mytest']
+            for j in range(1, 2):
+                compound_iso_smiles = []
+                for opt in opts:
+                    df = pd.read_csv(f'dj_api/data/processed/last/_{opt}{str_i}.csv')
+                    compound_iso_smiles += list(df['compound_iso_smiles'])
+                compound_iso_smiles = set(compound_iso_smiles)
+                smile_graph = {}
+                for smile in compound_iso_smiles:
+                    g = smile_to_graph(smile)
+                    smile_graph[smile] = g
+
+                df = pd.read_csv(f'dj_api/data/processed/last/_mytest{str_i}.csv')
+                test_drugs, test_prots, test_Y = list(df['compound_iso_smiles']), list(df['target_sequence']), list(
+                    df['affinity'])
+                XT = [seq_cat(t, 24) for t in test_prots]
+                test_sdrugs = [label_smiles(t, CHARISOSMISET, 100) for t in test_drugs]
+                test_drugs, test_prots, test_Y, test_seqdrugs = np.asarray(test_drugs), np.asarray(XT), np.asarray(
+                    test_Y), np.asarray(test_sdrugs)
+                test_data = TestbedDataset(root='dj_api/data', dataset=f'last/_mytest{str_i}', xd=test_drugs,
+                                           xt=test_prots, y=test_Y, z=test_seqdrugs, smile_graph=smile_graph)
+
+            def predicting(model, device, loader):
+                model.eval()
+                total_probs = []
+                sample_indices = []
+
+                logging.info(f'Making predictions for {len(loader.dataset)} samples...')
+                with torch.no_grad():
+                    for batch_idx, data in enumerate(loader):
+                        data = data.to(device)
+                        output = model(data)
+                        probs = output.cpu().numpy()
+                        indices = np.arange(len(probs)) + batch_idx * loader.batch_size
+
+                        total_probs.extend(probs)
+                        sample_indices.extend(indices)
+
+                total_probs = np.array(total_probs).flatten()
+                sample_indices = np.array(sample_indices).flatten()
+
+                return total_probs, sample_indices
+
+
+
+
+
+
+
+
+            modeling = GCNNetmuti
+
+            model_st = modeling.__name__
+
+            cuda_name = "cuda:0"
+            if len(sys.argv) > 3:
+                cuda_name = "cuda:" + str(int(sys.argv[1]))
+            print('cuda_name:', cuda_name)
+
+            TEST_BATCH_SIZE = 64
+            LR = 0.0005
+            NUM_EPOCHS = 100
+
+            print('Learning rate: ', LR)
+            print('Epochs: ', NUM_EPOCHS)
+
+            print('\nrunning on ', model_st + '_')
+
+            log_filename = 'training_1.log'
+
+            logging.basicConfig(filename=log_filename, filemode='w', format='%(asctime)s - %(levelname)s - %(message)s',
+                                level=logging.INFO)
+
+            processed_data_file_test = f'dj_api/data/processed/last/_mytest{str_i}.pt'
+            if not os.path.isfile(processed_data_file_test):
+                print('please run process_data_old.py to prepare data in pytorch format!')
+            else:
+                test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=False)
+
+                device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                model = modeling().to(device)
+                model_path = "dj_api/model_GCNNetmuti_.model"
+                model.load_state_dict(torch.load(model_path))
+
+                loss_fn = nn.BCELoss()
+
+                probs, indices = predicting(model, device, test_loader)
+
+                result_data = {
+                    "drug_sequence": drug_sequence,  # 这里用你的drug_sequence变量
+                    "rna_sequence": rna_sequence,
+                    "probability": float(probs[0]) # 确保转换为Python原生float，便于JSON序列化
+                }
+                cache.set(cache_key, result_data, timeout=3600)  # 缓存7天
+                all_results.append(result_data)
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df = pd.DataFrame(all_results, columns=["drug_sequence", "rna_sequence","probability"])
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+
+        output.seek(0)
+        file_name = "predicted_all_drugs_rnas.xlsx"
+        file_path = os.path.join(settings.MEDIA_ROOT, file_name)
+
+        with open(file_path, "wb") as file:
+            file.write(output.read())
+
+        download_link = request.build_absolute_uri(settings.MEDIA_URL + file_name)
+
+        return JsonResponse({'code': 0, 'msg': 'xlsx文件发送成功', 'data': download_link})
+
+
+
+
+
 def get_drugs(request):
     if request.method == 'POST':
 
