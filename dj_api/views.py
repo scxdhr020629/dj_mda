@@ -682,10 +682,25 @@ def get_drugs(request):
                 'Probability': sorted_probs[:30],
                 # 'True_Label': sorted_labels[:30]
             })
-
             # Save to CSV
             top_30_df.to_csv(file_name, index=False)
             logging.info(f'Top 30 predictions saved to {file_name}')
+
+        def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
+            # Sort by probability (in descending order)
+            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+            sorted_probs = probs[sorted_indices]
+            sorted_indices = indices[sorted_indices]
+
+            # Create a DataFrame to save all predictions
+            all_predictions_df = pd.DataFrame({
+                'Index': sorted_indices,
+                'Probability': sorted_probs,
+            })
+
+            # Save to CSV
+            all_predictions_df.to_csv(file_name, index=False)
+            logging.info(f'All predictions saved to {file_name}')
 
         # 保存 rna信息
         import pandas as pd
@@ -760,22 +775,22 @@ def get_drugs(request):
             probs, indices = predicting(model, device, test_loader)
 
             save_predictions(probs, indices, 'all_predict_0' + str_i + '.csv')
-            save_top_30_predictions(probs, indices, 'top_30_predictions_0' + str_i + '.csv')
-
+            # save_top_30_predictions(probs, indices, 'top_30_predictions_0' + str_i + '.csv')
+            save_all_sorted_predictions(probs, indices, 'top_all_predictions_0' + str_i + '.csv')
             # 现在是把前面的数据都给获取到了 但是我们要把数据和mirna对应上
-            top_30_file = 'top_30_predictions_0' + str_i + '.csv'
-            map_top_30_to_drugs(top_30_file, 'top_30_drug_predictions_0' + str_i + '.csv')
+            top_30_file = 'top_all_predictions_0' + str_i + '.csv'
+            map_top_30_to_drugs(top_30_file, 'top_all_drug_predictions_0' + str_i + '.csv')
 
 
-            csv_file_path = 'top_30_drug_predictions_0' + str_i + '.csv'
+            csv_file_path = 'top_all_drug_predictions_0' + str_i + '.csv'
             data_list = []
             # result_df = merged_df[['DrugBank_ID', 'smiles', 'Probability']]
             # 读取 CSV 文件
             with open(csv_file_path, mode="r", encoding="utf-8") as file:
                 reader = csv.DictReader(file)
                 for index, row in enumerate(reader):
-                    if index >= 5:  # 只获取前五条数据
-                        break
+                    # if index >= 5:  # 只获取前五条数据
+                    #     break
                     data_list.append({
                         "DrugBank_ID": row.get("DrugBank_ID"),
                         "smiles": row.get("smiles"),
@@ -783,7 +798,7 @@ def get_drugs(request):
                     })
 
 
-            cache.set(cache_key, data_list, timeout=3600)  # 缓存保存1小时
+            cache.set(cache_key, data_list, timeout=600)  # 缓存保存1小时
             # 返回 JSON 响应
             return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": data_list})
 
@@ -1158,6 +1173,22 @@ def get_rnas(request):
             top_30_df.to_csv(file_name, index=False)
             logging.info(f'Top 30 predictions saved to {file_name}')
 
+        def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
+            # Sort by probability (in descending order)
+            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+            sorted_probs = probs[sorted_indices]
+            sorted_indices = indices[sorted_indices]
+
+            # Create a DataFrame to save all predictions
+            all_predictions_df = pd.DataFrame({
+                'Index': sorted_indices,
+                'Probability': sorted_probs,
+            })
+
+            # Save to CSV
+            all_predictions_df.to_csv(file_name, index=False)
+            logging.info(f'All predictions saved to {file_name}')
+
         # 保存 rna信息
         import pandas as pd
 
@@ -1225,22 +1256,22 @@ def get_rnas(request):
             probs, indices = predicting(model, device, test_loader)
 
             save_predictions(probs, indices, 'all_predict_0' + str_i + '.csv')
-            save_top_30_predictions(probs, indices, 'top_30_predictions_0' + str_i + '.csv')
-
+            # save_top_30_predictions(probs, indices, 'top_30_predictions_0' + str_i + '.csv')
+            save_all_sorted_predictions(probs, indices,'top_all_predictions_0' + str_i + '.csv')
             # 现在是把前面的数据都给获取到了 但是我们要把数据和mirna对应上
-            top_30_file = 'top_30_predictions_0' + str_i + '.csv'
-            map_top_30_to_rna(top_30_file, 'top_30_miRNA_predictions_0' + str_i + '.csv')
+            top_30_file = 'top_all_predictions_0' + str_i + '.csv'
+            map_top_30_to_rna(top_30_file, 'top_all_miRNA_predictions_0' + str_i + '.csv')
 
 
-            csv_file_path = 'top_30_miRNA_predictions_0' + str_i + '.csv'
+            csv_file_path = 'top_all_miRNA_predictions_0' + str_i + '.csv'
             data_list = []
 
             # 读取 CSV 文件
             with open(csv_file_path, mode="r", encoding="utf-8") as file:
                 reader = csv.DictReader(file)
                 for index, row in enumerate(reader):
-                    if index >= 5:  # 只获取前五条数据
-                        break
+                    # if index >= 5:  # 只获取前五条数据
+                    #     break
                     data_list.append({
                         "RNA_ID": row.get("RNA_ID"),
                         "Sequence": row.get("Sequence"),
@@ -1248,7 +1279,7 @@ def get_rnas(request):
                     })
 
 
-            cache.set(cache_key, data_list, timeout=3600)  # 缓存保存1小时
+            cache.set(cache_key, data_list, timeout=600)  # 缓存保存1小时
             # 返回 JSON 响应
             return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": data_list})
 
