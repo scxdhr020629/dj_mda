@@ -686,21 +686,58 @@ def get_drugs(request):
             top_30_df.to_csv(file_name, index=False)
             logging.info(f'Top 30 predictions saved to {file_name}')
 
+        # def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
+        #     # Sort by probability (in descending order)
+        #     sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+        #     sorted_probs = probs[sorted_indices]
+        #     sorted_indices = indices[sorted_indices]
+        #
+        #     # Create a DataFrame to save all predictions
+        #     all_predictions_df = pd.DataFrame({
+        #         'Index': sorted_indices,
+        #         'Probability': sorted_probs,
+        #     })
+        #
+        #     # Save to CSV
+        #     all_predictions_df.to_csv(file_name, index=False)
+        #     logging.info(f'All predictions saved to {file_name}')
+
         def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
             # Sort by probability (in descending order)
             sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
             sorted_probs = probs[sorted_indices]
             sorted_indices = indices[sorted_indices]
 
+            # Format probabilities to have exactly 4 decimal places without rounding
+            formatted_probs = []
+            for prob in sorted_probs:
+                # Convert to string with many decimal places
+                prob_str = str(prob)
+                # Split by decimal point
+                parts = prob_str.split('.')
+                if len(parts) == 1:  # No decimal point
+                    formatted_probs.append(f"{parts[0]}.0000")
+                else:
+                    integer_part = parts[0]
+                    decimal_part = parts[1]
+                    # Take exactly 4 decimal places (or pad with zeros)
+                    if len(decimal_part) >= 4:
+                        decimal_part = decimal_part[:4]  # Truncate to 4 decimal places
+                    else:
+                        decimal_part = decimal_part.ljust(4, '0')  # Pad with zeros
+                    formatted_probs.append(f"{integer_part}.{decimal_part}")
+
             # Create a DataFrame to save all predictions
             all_predictions_df = pd.DataFrame({
                 'Index': sorted_indices,
-                'Probability': sorted_probs,
+                'Probability': formatted_probs,
             })
 
             # Save to CSV
             all_predictions_df.to_csv(file_name, index=False)
             logging.info(f'All predictions saved to {file_name}')
+
+
 
         # 保存 rna信息
         import pandas as pd
@@ -721,13 +758,6 @@ def get_drugs(request):
             # 5. 保存为CSV文件
             result_df.to_csv(output_file, index=False)
             print(f'Top 30 miRNA predictions saved to {output_file}')
-            # return result_df
-
-
-
-
-
-
 
 
         modeling = GCNNetmuti
@@ -1173,21 +1203,58 @@ def get_rnas(request):
             top_30_df.to_csv(file_name, index=False)
             logging.info(f'Top 30 predictions saved to {file_name}')
 
+        # def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
+        #     # Sort by probability (in descending order)
+        #     sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+        #     sorted_probs = probs[sorted_indices]
+        #     sorted_indices = indices[sorted_indices]
+        #
+        #     # Create a DataFrame to save all predictions
+        #     all_predictions_df = pd.DataFrame({
+        #         'Index': sorted_indices,
+        #         'Probability': sorted_probs,
+        #     })
+        #
+        #     # Save to CSV
+        #     all_predictions_df.to_csv(file_name, index=False)
+        #     logging.info(f'All predictions saved to {file_name}')
+
         def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
             # Sort by probability (in descending order)
             sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
             sorted_probs = probs[sorted_indices]
             sorted_indices = indices[sorted_indices]
 
+            # Format probabilities to have exactly 4 decimal places without rounding
+            formatted_probs = []
+            for prob in sorted_probs:
+                # Convert to string with many decimal places
+                prob_str = str(prob)
+                # Split by decimal point
+                parts = prob_str.split('.')
+                if len(parts) == 1:  # No decimal point
+                    formatted_probs.append(f"{parts[0]}.0000")
+                else:
+                    integer_part = parts[0]
+                    decimal_part = parts[1]
+                    # Take exactly 4 decimal places (or pad with zeros)
+                    if len(decimal_part) >= 4:
+                        decimal_part = decimal_part[:4]  # Truncate to 4 decimal places
+                    else:
+                        decimal_part = decimal_part.ljust(4, '0')  # Pad with zeros
+                    formatted_probs.append(f"{integer_part}.{decimal_part}")
+
             # Create a DataFrame to save all predictions
             all_predictions_df = pd.DataFrame({
                 'Index': sorted_indices,
-                'Probability': sorted_probs,
+                'Probability': formatted_probs,
             })
 
             # Save to CSV
             all_predictions_df.to_csv(file_name, index=False)
             logging.info(f'All predictions saved to {file_name}')
+
+
 
         # 保存 rna信息
         import pandas as pd
