@@ -32,6 +32,50 @@ from django.http import JsonResponse
 from django.core.cache import cache
 
 
+
+def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
+    # Sort by probability (in descending order)
+    sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
+    sorted_probs = probs[sorted_indices]
+    sorted_indices = indices[sorted_indices]
+
+    # Format probabilities to have exactly 4 decimal places without rounding
+    formatted_probs = []
+    for prob in sorted_probs:
+        # Handle very small numbers (like 9.876668e-05)
+        if prob < 0.0001:
+            formatted_probs.append("0.0000")
+            continue
+
+        # For normal numbers, convert to standard decimal format
+        # Avoid scientific notation by using a specific format
+        prob_str = f"{prob:.10f}"  # Use enough precision to avoid scientific notation
+
+        # Split by decimal point
+        parts = prob_str.split('.')
+        integer_part = parts[0]
+        decimal_part = parts[1]
+
+        # Take exactly 4 decimal places (or pad with zeros)
+        if len(decimal_part) >= 4:
+            decimal_part = decimal_part[:4]  # Truncate to 4 decimal places
+        else:
+            decimal_part = decimal_part.ljust(4, '0')  # Pad with zeros
+
+        formatted_probs.append(f"{integer_part}.{decimal_part}")
+
+    # Create a DataFrame to save all predictions
+    all_predictions_df = pd.DataFrame({
+        'Index': sorted_indices,
+        'Probability': formatted_probs,
+    })
+
+    # Save to CSV
+    all_predictions_df.to_csv(file_name, index=False)
+    logging.info(f'All predictions saved to {file_name}')
+
+
+
 def atom_features(atom):
     return np.array(one_of_k_encoding_unk(atom.GetSymbol(),
                                           ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca',
@@ -937,18 +981,7 @@ def get_all_drugs(request):
                 predictions_df.to_csv(file_name, index=False)
                 logging.info(f'Predictions saved to {file_name}')
 
-            def save_top_30_predictions(probs, indices, file_name='top_30_predictions_02.csv'):
-                sorted_indices = np.argsort(probs)[::-1]
-                sorted_probs = probs[sorted_indices]
-                sorted_indices = indices[sorted_indices]
 
-                top_30_df = pd.DataFrame({
-                    'Index': sorted_indices[:30],
-                    'Probability': sorted_probs[:30]
-                })
-
-                top_30_df.to_csv(file_name, index=False)
-                logging.info(f'Top 30 predictions saved to {file_name}')
 
             def map_top_30_to_drugs(top_30_file, output_file='top_30_drugs_predictions.csv'):
                 # 1. 读取drugs文件
@@ -1007,19 +1040,19 @@ def get_all_drugs(request):
                 probs, indices = predicting(model, device, test_loader)
 
                 save_predictions(probs, indices, f'all_predict_0{str_i}.csv')
-                save_top_30_predictions(probs, indices, f'top_30_predictions_0{str_i}.csv')
+                # save_top_30_predictions(probs, indices, f'top_30_predictions_0{str_i}.csv')
+                save_all_sorted_predictions(probs, indices, f'top_all_predictions_0{str_i}.csv')
+                top_30_file = f'top_all_predictions_0{str_i}.csv'
+                map_top_30_to_drugs(top_30_file, 'top_all_drug_predictions_0' + str_i + '.csv')
 
-                top_30_file = f'top_30_predictions_0{str_i}.csv'
-                map_top_30_to_drugs(top_30_file, 'top_30_drug_predictions_0' + str_i + '.csv')
-
-                csv_file_path = 'top_30_drug_predictions_0' + str_i + '.csv'
+                csv_file_path = 'top_all_drug_predictions_0' + str_i + '.csv'
                 data_list = []
 
                 with open(csv_file_path, mode="r", encoding="utf-8") as file:
                     reader = csv.DictReader(file)
                     for index, row in enumerate(reader):
-                        if index >= 5:  # 只获取前五条数据
-                            break
+                        # if index >= 5:  # 只获取前五条数据
+                        #     break
                         data_list.append({
                             "DrugBank_ID": row.get("DrugBank_ID"),
                             "smiles": row.get("smiles"),
@@ -1202,59 +1235,6 @@ def get_rnas(request):
             # Save to CSV
             top_30_df.to_csv(file_name, index=False)
             logging.info(f'Top 30 predictions saved to {file_name}')
-
-        # def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
-        #     # Sort by probability (in descending order)
-        #     sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-        #     sorted_probs = probs[sorted_indices]
-        #     sorted_indices = indices[sorted_indices]
-        #
-        #     # Create a DataFrame to save all predictions
-        #     all_predictions_df = pd.DataFrame({
-        #         'Index': sorted_indices,
-        #         'Probability': sorted_probs,
-        #     })
-        #
-        #     # Save to CSV
-        #     all_predictions_df.to_csv(file_name, index=False)
-        #     logging.info(f'All predictions saved to {file_name}')
-
-        def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
-            # Sort by probability (in descending order)
-            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-            sorted_probs = probs[sorted_indices]
-            sorted_indices = indices[sorted_indices]
-
-            # Format probabilities to have exactly 4 decimal places without rounding
-            formatted_probs = []
-            for prob in sorted_probs:
-                # Convert to string with many decimal places
-                prob_str = str(prob)
-                # Split by decimal point
-                parts = prob_str.split('.')
-                if len(parts) == 1:  # No decimal point
-                    formatted_probs.append(f"{parts[0]}.0000")
-                else:
-                    integer_part = parts[0]
-                    decimal_part = parts[1]
-                    # Take exactly 4 decimal places (or pad with zeros)
-                    if len(decimal_part) >= 4:
-                        decimal_part = decimal_part[:4]  # Truncate to 4 decimal places
-                    else:
-                        decimal_part = decimal_part.ljust(4, '0')  # Pad with zeros
-                    formatted_probs.append(f"{integer_part}.{decimal_part}")
-
-            # Create a DataFrame to save all predictions
-            all_predictions_df = pd.DataFrame({
-                'Index': sorted_indices,
-                'Probability': formatted_probs,
-            })
-
-            # Save to CSV
-            all_predictions_df.to_csv(file_name, index=False)
-            logging.info(f'All predictions saved to {file_name}')
-
-
 
         # 保存 rna信息
         import pandas as pd
@@ -1514,19 +1494,19 @@ def get_all_rnas(request):
                 probs, indices = predicting(model, device, test_loader)
 
                 save_predictions(probs, indices, f'all_predict_0{str_i}.csv')
-                save_top_30_predictions(probs, indices, f'top_30_predictions_0{str_i}.csv')
+                # save_top_30_predictions(probs, indices, f'top_30_predictions_0{str_i}.csv')
+                save_all_sorted_predictions(probs, indices, 'top_all_predictions_0' + str_i + '.csv')
+                top_30_file = f'top_all_predictions_0{str_i}.csv'
+                map_top_30_to_rna(top_30_file, f'top_all_miRNA_predictions_0{str_i}.csv')
 
-                top_30_file = f'top_30_predictions_0{str_i}.csv'
-                map_top_30_to_rna(top_30_file, f'top_30_miRNA_predictions_0{str_i}.csv')
-
-                csv_file_path = f'top_30_miRNA_predictions_0{str_i}.csv'
+                csv_file_path = f'top_all_miRNA_predictions_0{str_i}.csv'
                 data_list = []
 
                 with open(csv_file_path, mode="r", encoding="utf-8") as file:
                     reader = csv.DictReader(file)
                     for index, row in enumerate(reader):
-                        if index >= 5:
-                            break
+                        # if index >= 5:
+                        #     break
                         data_list.append({
                             "RNA_ID": row.get("RNA_ID"),
                             "Sequence": row.get("Sequence"),
