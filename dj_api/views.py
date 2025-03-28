@@ -198,6 +198,19 @@ def add_user(request):
         return JsonResponse({'code': 100103, 'msg': '请求方法错误'})
 
 
+def format_probability(prob):
+    # Check if value is smaller than 0.0001
+    if prob < 0.0001:
+        return 0.0
+
+    # Convert to string with many decimal places first
+    prob_str = f"{prob:.10f}"
+
+    # Split at decimal point
+    parts = prob_str.split('.')
+
+    # Reconstruct with exactly 4 decimal places (truncated, not rounded)
+    return float(f"{parts[0]}.{parts[1][:4]}")
 
 
 
@@ -322,36 +335,6 @@ def get_drug_rna_relation(request):
             return total_probs, sample_indices
 
 
-        def save_predictions(probs, indices, file_name='all_predict_02.csv'):
-            # Convert probabilities and indices to a DataFrame
-            predictions_df = pd.DataFrame({
-                'Index': indices,  # 保存样本索引
-                'Probability': probs  # 保存预测概率
-            })
-
-            # Save to CSV without sorting
-            predictions_df.to_csv(file_name, index=False)
-            logging.info(f'Predictions saved to {file_name}')
-
-        # 检测一下这段代码写的是否正确
-        def save_top_30_predictions(probs, indices, file_name='top_30_predictions_02.csv'):
-            # Sort by probability (in descending order)
-            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-            sorted_probs = probs[sorted_indices]
-            # sorted_labels = labels[sorted_indices]
-            sorted_indices = indices[sorted_indices]
-
-            # Create a DataFrame to save the top 30 predictions
-            top_30_df = pd.DataFrame({
-                'Index': sorted_indices[:30],
-                'Probability': sorted_probs[:30],
-                # 'True_Label': sorted_labels[:30]
-            })
-
-            # Save to CSV
-            top_30_df.to_csv(file_name, index=False)
-            logging.info(f'Top 30 predictions saved to {file_name}')
-
         # 保存 rna信息
         import pandas as pd
         modeling = GCNNetmuti
@@ -397,11 +380,12 @@ def get_drug_rna_relation(request):
 
 
             probs, indices = predicting(model, device, test_loader)
-            print(f'probs: {probs}')
+            formatted_prob = format_probability(float(probs[0]))
+            # print(f'probs: {probs}')
             result_data = {
                 "drug_sequence": drug_sequence,  # 这里用你的drug_sequence变量
                 "rna_sequence": rna_sequence,
-                "probability": float(probs[0] ) # 确保转换为Python原生float，便于JSON序列化
+                "probability": formatted_prob # 确保转换为Python原生float，便于JSON序列化
             }
             cache.set(cache_key, result_data, 60 * 60 * 24 * 7)  # 缓存7天
             return JsonResponse({'code':0,'msg':'查询成功，内容如下',"data": result_data})
@@ -544,11 +528,11 @@ def get_all_drug_rna_relation(request):
                 loss_fn = nn.BCELoss()
 
                 probs, indices = predicting(model, device, test_loader)
-
+                format_prob = format_probability(float(probs[0]))
                 result_data = {
                     "drug_sequence": drug_sequence,  # 这里用你的drug_sequence变量
                     "rna_sequence": rna_sequence,
-                    "probability": float(probs[0]) # 确保转换为Python原生float，便于JSON序列化
+                    "probability": format_prob # 确保转换为Python原生float，便于JSON序列化
                 }
                 cache.set(cache_key, result_data, timeout=3600)  # 缓存7天
                 all_results.append(result_data)
@@ -746,40 +730,6 @@ def get_drugs(request):
         #     all_predictions_df.to_csv(file_name, index=False)
         #     logging.info(f'All predictions saved to {file_name}')
 
-        def save_all_sorted_predictions(probs, indices, file_name='all_predictions.csv'):
-            # Sort by probability (in descending order)
-            sorted_indices = np.argsort(probs)[::-1]  # sort in descending order
-            sorted_probs = probs[sorted_indices]
-            sorted_indices = indices[sorted_indices]
-
-            # Format probabilities to have exactly 4 decimal places without rounding
-            formatted_probs = []
-            for prob in sorted_probs:
-                # Convert to string with many decimal places
-                prob_str = str(prob)
-                # Split by decimal point
-                parts = prob_str.split('.')
-                if len(parts) == 1:  # No decimal point
-                    formatted_probs.append(f"{parts[0]}.0000")
-                else:
-                    integer_part = parts[0]
-                    decimal_part = parts[1]
-                    # Take exactly 4 decimal places (or pad with zeros)
-                    if len(decimal_part) >= 4:
-                        decimal_part = decimal_part[:4]  # Truncate to 4 decimal places
-                    else:
-                        decimal_part = decimal_part.ljust(4, '0')  # Pad with zeros
-                    formatted_probs.append(f"{integer_part}.{decimal_part}")
-
-            # Create a DataFrame to save all predictions
-            all_predictions_df = pd.DataFrame({
-                'Index': sorted_indices,
-                'Probability': formatted_probs,
-            })
-
-            # Save to CSV
-            all_predictions_df.to_csv(file_name, index=False)
-            logging.info(f'All predictions saved to {file_name}')
 
 
 

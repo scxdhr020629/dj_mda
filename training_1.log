@@ -1,20 +1,4 @@
-2025-03-27 16:17:23,815 - INFO - Making predictions for 156 samples...
-2025-03-27 16:17:24,127 - INFO - Predictions saved to all_predict_01.csv
-2025-03-27 16:17:24,128 - INFO - All predictions saved to top_all_predictions_01.csv
-2025-03-27 16:17:24,627 - INFO - Making predictions for 156 samples...
-2025-03-27 16:17:24,664 - INFO - Predictions saved to all_predict_01.csv
-2025-03-27 16:17:24,665 - INFO - All predictions saved to top_all_predictions_01.csv
-2025-03-27 16:19:48,825 - ERROR - Internal Server Error: /dj_api/get_rnas/
-Traceback (most recent call last):
-  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
-    response = get_response(request)
-  File "D:\MyAnaconda\envs\torchpy39\lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
-    response = wrapped_callback(request, *callback_args, **callback_kwargs)
-  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 1162, in get_rnas
-    g = smile_to_graph(smile)
-  File "D:\MyGitProjects\dj_mda\dj_api\views.py", line 120, in smile_to_graph
-    mol = Chem.MolFromSmiles(smile)
-TypeError: No registered converter was able to produce a C++ rvalue of type class std::basic_string<wchar_t,struct std::char_traits<wchar_t>,class std::allocator<wchar_t> > from this Python object of type float
-2025-03-27 16:20:11,339 - INFO - Making predictions for 1578 samples...
-2025-03-27 16:20:11,982 - INFO - Predictions saved to all_predict_01.csv
-2025-03-27 16:20:11,985 - INFO - All predictions saved to top_all_predictions_01.csv
+2025-03-28 10:55:57,769 - INFO - Making predictions for 1 samples...
+2025-03-28 10:55:58,094 - INFO - Making predictions for 1 samples...
+2025-03-28 10:55:58,140 - INFO - Making predictions for 1 samples...
+2025-03-28 11:44:35,326 - INFO - Making predictions for 1 samples...
