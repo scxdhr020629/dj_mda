@@ -4,7 +4,10 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.core import mail
 from django.core.mail import EmailMultiAlternatives  # 新增导入
+from openai.types import Reasoning
+from django.views.decorators.csrf import csrf_exempt
 from dj_mda import settings
+from openai import OpenAI
 # import logging
 
 # Create your views here.
@@ -25,33 +28,91 @@ def validate_email_data(body):
     return True, None
 
 
-# def send_email(request):
-#     if request.method == 'POST':
-#         try:
-#             # 解析请求体
-#             body = json.loads(request.body.decode('utf-8'))
-#
-#             # 验证请求数据
-#             is_valid, error_message = validate_email_data(body)
-#             if not is_valid:
-#                 return JsonResponse({'code': 1, 'msg': error_message}, status=400)
-#
-#             # 发送邮件
-#             mail.send_mail(
-#                 subject=body.get('subject'),
-#                 message=body.get('message'),
-#                 from_email=settings.EMAIL_HOST_USER,
-#                 recipient_list=body.get('recipient_list'),
-#             )
-#
-#             # 记录日志
-#             # logger.info(f"Email sent to {body.get('recipient_list')} with subject: {body.get('subject')}")
-#             print("为什么前端没有json")
-#             return JsonResponse({'code': 0, 'msg': '邮件发送成功', 'data': body})
-#         except Exception as e:
-#             # 捕获异常并记录错误日志
-#             # logger.error(f"Failed to send email: {str(e)}")
-#             return JsonResponse({'code': 1, 'msg': f"邮件发送失败: {str(e)}"}, status=500)
+@csrf_exempt
+def test_openai(request):
+    """
+    API endpoint to interact with OpenAI model via POST request.
+
+    Returns both content and reasoning_content in the response data.
+
+    POST Parameters:
+        message (str): The message/query to send to the AI model
+    """
+    # Ensure the request is a POST
+    if request.method != 'POST':
+        return JsonResponse({
+            'code': 1,
+            'msg': 'Only POST requests are allowed',
+            'data': None
+        }, status=405)
+
+    try:
+        # Parse the JSON data from the request body
+        data = json.loads(request.body)
+
+        # Extract the message from the request data
+        user_message = data.get('message')
+
+        # Validate input
+        if not user_message or not isinstance(user_message, str):
+            return JsonResponse({
+                'code': 1,
+                'msg': 'A valid "message" field is required',
+                'data': None
+            }, status=400)
+
+        # Initialize the OpenAI client
+        client = OpenAI(
+            api_key="bce-v3/ALTAK-sG68G5A0VyOCbSaOTlG1n/4507349759e20b348f7829576282c8be48e5a226",
+            base_url="https://qianfan.baidubce.com/v2",
+        )
+
+        # Prepare messages for the model
+        messages = [{"role": "user", "content": user_message}]
+
+        # Call the OpenAI API
+        response = client.chat.completions.create(
+            model="deepseek-r1-distill-qwen-32b",
+            messages=messages
+        )
+
+        # Extract content and reasoning_content
+        content = response.choices[0].message.content
+        reasoning_content = response.choices[0].message.reasoning_content if hasattr(response.choices[0].message,
+                                                                                     'reasoning_content') else None
+
+        # Print for debugging purposes
+        print(f"Content: {content}")
+        print(f"Reasoning Content: {reasoning_content}")
+
+        # Return both content and reasoning_content in data field
+        return JsonResponse({
+            'code': 0,
+            'msg': '发送成功',
+            'data': {
+                'reasoning_content': reasoning_content,
+                'content': content
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'code': 1,
+            'msg': 'Invalid JSON data in request body',
+            'data': None
+        }, status=400)
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"Error in test_openai: {str(e)}")
+
+        return JsonResponse({
+            'code': 1,
+            'msg': '处理请求时发生错误',
+            'data': None
+        }, status=500)
+
+
+
 
 def send_email(request):
     if request.method == 'POST':
