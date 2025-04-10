@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-z%!q7(!zl(qy%zh9y0&ks)pl#rl081tgu=&%x*@0$8rtbj&(2s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -146,6 +146,7 @@ CACHES = {
         'LOCATION': 'redis://127.0.0.1:6379/1',  # 使用本地 Redis 服务，并指定数据库索引
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            # 'PASSWORD': '12345678',  # 如果 Redis 设置了密码，请在这里填写
         }
     }
 }

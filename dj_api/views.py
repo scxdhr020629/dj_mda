@@ -19,6 +19,7 @@ from io import BytesIO
 
 import torch.nn as nn
 from jinja2.lexer import TOKEN_DOT
+from torch.serialization import MAP_LOCATION
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from .model.cnn_gcnmulti import GCNNetmuti
 # from  model.cnn_gcn import GCNNet
@@ -371,10 +372,12 @@ def get_drug_rna_relation(request):
             test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=False)
 
             # training the model
-            device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
             model = modeling().to(device)
             model_path = "dj_api/model_GCNNetmuti_.model"
-            model.load_state_dict(torch.load(model_path))
+            # model.load_state_dict(torch.load(model_path))
+            model.load_state_dict(torch.load(model_path, map_location="cpu"))
 
             loss_fn = nn.BCELoss()  # for classification
 
@@ -520,10 +523,11 @@ def get_all_drug_rna_relation(request):
             else:
                 test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=False)
 
-                device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                device = torch.device("cpu")
                 model = modeling().to(device)
                 model_path = "dj_api/model_GCNNetmuti_.model"
-                model.load_state_dict(torch.load(model_path))
+                model.load_state_dict(torch.load(model_path,map_location="cpu"))
 
                 loss_fn = nn.BCELoss()
 
@@ -788,10 +792,12 @@ def get_drugs(request):
             test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
 
             # training the model
-            device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
             model = modeling().to(device)
             model_path = "dj_api/model_GCNNetmuti_.model"
-            model.load_state_dict(torch.load(model_path))
+            # model.load_state_dict(torch.load(model_path))
+            model.load_state_dict(torch.load(model_path, map_location="cpu"))
 
             loss_fn = nn.BCELoss()  # for classification
 
@@ -980,10 +986,12 @@ def get_all_drugs(request):
             else:
                 test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
 
-                device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                device = torch.device("cpu")
                 model = modeling().to(device)
                 model_path = "dj_api/model_GCNNetmuti_.model"
-                model.load_state_dict(torch.load(model_path))
+                # model.load_state_dict(torch.load(model_path))
+                model.load_state_dict(torch.load(model_path, map_location="cpu"))
 
                 loss_fn = nn.BCELoss()
 
@@ -1242,10 +1250,12 @@ def get_rnas(request):
             test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
 
             # training the model
-            device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
             model = modeling().to(device)
             model_path = "dj_api/model_GCNNetmuti_.model"
-            model.load_state_dict(torch.load(model_path))
+            # model.load_state_dict(torch.load(model_path))
+            model.load_state_dict(torch.load(model_path, map_location="cpu"))
 
             loss_fn = nn.BCELoss()  # for classification
 
@@ -1434,10 +1444,12 @@ def get_all_rnas(request):
             else:
                 test_loader = DataLoader(test_data, batch_size=TEST_BATCH_SIZE, shuffle=False, drop_last=True)
 
-                device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                # device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
+                device = torch.device("cpu")
                 model = modeling().to(device)
                 model_path = "dj_api/model_GCNNetmuti_.model"
-                model.load_state_dict(torch.load(model_path))
+                # model.load_state_dict(torch.load(model_path))
+                model.load_state_dict(torch.load(model_path, map_location="cpu"))
 
                 loss_fn = nn.BCELoss()
 

@@ -82,6 +82,7 @@ def test_openai(request):
                                                                                      'reasoning_content') else None
 
         # Print for debugging purposes
+        print("hello")
         print(f"Content: {content}")
         print(f"Reasoning Content: {reasoning_content}")
 
