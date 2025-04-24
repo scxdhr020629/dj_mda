@@ -10,6 +10,147 @@ from dj_mda import settings
 from openai import OpenAI
 # import logging
 
+
+# api/views.py
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+import pandas as pd
+import networkx as nx
+import json
+
+from .models import UploadedFile, Node, Relationship
+from .serializers import UploadedFileSerializer, NodeSerializer, RelationshipSerializer
+
+
+class KnowledgeGraphViewSet(viewsets.ViewSet):
+    @action(detail=False, methods=['POST'])
+    def upload_file(self, request):
+        file_serializer = UploadedFileSerializer(data=request.data)
+
+        if file_serializer.is_valid():
+            file_serializer.save()
+            excel_file = request.FILES['file']
+
+            # 处理Excel文件
+            try:
+                graph_data = self.process_excel(excel_file)
+                return Response(graph_data, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(file_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def process_excel(self, excel_file):
+        # 读取Excel文件
+        df = pd.read_excel(excel_file)
+
+        # 假设Excel文件有如下列：drug_id, drug_name, rna_id, rna_name, relationship_type, evidence_score
+        G = nx.DiGraph()
+
+        # 清除旧数据
+        Node.objects.all().delete()
+        Relationship.objects.all().delete()
+
+        # 处理数据并创建节点和关系
+        for _, row in df.iterrows():
+            # 创建药物节点
+            drug_node, _ = Node.objects.get_or_create(
+                node_id=row['drug_id'],
+                defaults={
+                    'name': row['drug_name'],
+                    'node_type': 'drug',
+                    'properties': {}  # 可以添加更多属性
+                }
+            )
+
+            # 创建RNA节点
+            rna_node, _ = Node.objects.get_or_create(
+                node_id=row['rna_id'],
+                defaults={
+                    'name': row['rna_name'],
+                    'node_type': 'rna',
+                    'properties': {}  # 可以添加更多属性
+                }
+            )
+
+            # 创建关系
+            relationship = Relationship.objects.create(
+                source=drug_node,
+                target=rna_node,
+                relationship_type=row['relationship_type'],
+                properties={
+                    'evidence_score': float(row['evidence_score']) if 'evidence_score' in row else 0.0
+                }
+            )
+
+            # 为NetworkX图添加节点和边
+            if not G.has_node(drug_node.node_id):
+                G.add_node(drug_node.node_id, name=drug_node.name, node_type='drug')
+
+            if not G.has_node(rna_node.node_id):
+                G.add_node(rna_node.node_id, name=rna_node.name, node_type='rna')
+
+            G.add_edge(
+                drug_node.node_id,
+                rna_node.node_id,
+                relationship=row['relationship_type'],
+                evidence_score=float(row['evidence_score']) if 'evidence_score' in row else 0.0
+            )
+
+        # 转换为前端可视化库可用的格式
+        nodes = []
+        for node_id in G.nodes():
+            node_data = G.nodes[node_id]
+            nodes.append({
+                'id': node_id,
+                'name': node_data['name'],
+                'type': node_data['node_type'],
+                'symbolSize': 30 if node_data['node_type'] == 'drug' else 20,
+                'category': 0 if node_data['node_type'] == 'drug' else 1,
+            })
+
+        links = []
+        for source, target, data in G.edges(data=True):
+            links.append({
+                'source': source,
+                'target': target,
+                'relationship': data['relationship'],
+                'value': data['evidence_score']
+            })
+
+        # 计算基本统计信息
+        stats = {
+            'totalNodes': G.number_of_nodes(),
+            'totalEdges': G.number_of_edges(),
+            'drugCount': len([n for n, d in G.nodes(data=True) if d['node_type'] == 'drug']),
+            'rnaCount': len([n for n, d in G.nodes(data=True) if d['node_type'] == 'rna']),
+        }
+
+        return {
+            'nodes': nodes,
+            'links': links,
+            'stats': stats
+        }
+
+    @action(detail=False, methods=['GET'])
+    def get_graph(self, request):
+        """获取完整知识图谱数据"""
+        nodes = Node.objects.all()
+        relationships = Relationship.objects.all()
+
+        node_data = NodeSerializer(nodes, many=True).data
+        relationship_data = RelationshipSerializer(relationships, many=True).data
+
+        return Response({
+            'nodes': node_data,
+            'relationships': relationship_data
+        })
+
+
+
+
+
 # Create your views here.
 def hello(request):
     return JsonResponse({'hello': 'world'})
